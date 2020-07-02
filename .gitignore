@@ -4,3 +4,5 @@ public/bundle.*
 dist
 package-lock.json
 yarn.lock
+.vercel
+.vscode

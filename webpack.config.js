@@ -1,4 +1,5 @@
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+var svgToMiniDataURI = require('mini-svg-data-uri');
 const path = require('path');
 
 const mode = process.env.NODE_ENV || 'development';
@@ -58,10 +59,18 @@ module.exports = {
 					 * MiniCssExtractPlugin doesn't support HMR.
 					 * For developing, use 'style-loader' instead.
 					 * */
-					prod ? MiniCssExtractPlugin.loader : 'style-loader',
+					(prod && false) ? MiniCssExtractPlugin.loader : 'style-loader',
 					'css-loader'
 				]
-			}
+			},
+			{
+                test: /\.(png|jpe?g|gif|svg)$/i,
+                loader: 'url-loader',
+                options: {
+					esModule: false,
+					generator: (content) => svgToMiniDataURI(content.toString()),
+                },
+            },
 		]
 	},
 	mode,
@@ -70,5 +79,8 @@ module.exports = {
 			filename: '[name].css'
 		})
 	],
-	devtool: prod ? false: 'source-map'
+	devtool: prod ? false: 'source-map',
+	devServer: {
+        disableHostCheck: true,
+    }
 };

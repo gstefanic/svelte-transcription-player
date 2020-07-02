@@ -1,0 +1,11 @@
+{
+	"presets": [
+		["@babel/preset-env", {
+			"targets": "ie >= 9",
+			"debug": false,
+			"modules": "commonjs"
+		}]
+	],
+	"plugins": [
+	]
+}

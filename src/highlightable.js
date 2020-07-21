@@ -169,6 +169,7 @@ class Highlightable {
 
         const wordElements = words.map(word => {
             const wordSpan = document.createElement('span');
+            wordSpan.classList.add('word');
             wordSpan.style.display = 'inline-block';
             wordSpan.innerText = word;
             wordSpan.innerHTML = wordSpan.innerHTML + '&nbsp;';

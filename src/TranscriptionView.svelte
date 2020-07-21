@@ -1,6 +1,47 @@
 <script>
-    import { duration, time } from './store';
+    import { onMount, beforeUpdate, getContext, tick } from 'svelte';
+    import { duration, time, activeIndex, playing } from './store';
+    import { textMetrics } from './utils';
     export let transcription;
+    export let fontSize;
+
+    $: heightOfLine = container ? getLineHeight(fontSize) : 0;
+
+    const getLineHeight = () => container ? textMetrics('A', container).height : 0;
+
+    let container, lines;
+
+    let currentProgressScroll = 0;
+
+    let autoscroll = true;
+
+    const { getWrapper, isVisible, shouldBeVisible } = getContext('resizable');
+
+    onMount(async () => {
+        lines = container.getElementsByClassName('line');
+        const wrapper = getWrapper();
+
+        let timer;
+        let wrapperOnScroll = () => {
+            clearTimeout(timer);
+            autoscroll = false;
+            timer = setTimeout(() => {
+                const scrollOfProgress = getScrollOfProgress();
+                autoscroll = isVisible(scrollOfProgress) || isVisible(scrollOfProgress - heightOfLine);
+            }, 1000);
+        };
+
+
+        if (wrapper instanceof HTMLElement) {
+            wrapper.addEventListener('wheel', wrapperOnScroll);
+            wrapper.addEventListener('touchmove', wrapperOnScroll);
+        }
+
+        return () => {
+            wrapper.removeEventListener('wheel', wrapperOnScroll);
+            wrapper.removeEventListener('touchmove', wrapperOnScroll);
+        }
+    });
 
     let currentLineProgress, currentLineIndex;
 
@@ -40,24 +81,83 @@
             }
         }
     };
+
+    const lineClick = index => () => {
+        if ($activeIndex === index || index === currentLineIndex) {
+            autoscroll = true;
+            if ($playing) {
+                $playing = false;
+            } else {
+                $activeIndex = undefined;
+                $activeIndex = index;
+                $playing = true;
+            }
+        } else {
+            $activeIndex = undefined;
+            $activeIndex = index;
+        }
+    };
+
+    const getScrollOfProgress = () => {
+        if (lines) {
+            const lineElement = lines[currentLineIndex];
+            if (lineElement) {
+                const lineTop = lineElement.offsetTop;
+                const lineHeight = lineElement.offsetHeight;
+                const adjustedLineHeight = lineHeight;
+                const progressLineNumber = Math.ceil((adjustedLineHeight * currentLineProgress) / heightOfLine);
+                return lineTop + (progressLineNumber) * heightOfLine;
+            }
+        }
+        return 0;
+    }
+
+    const scrollIfNeeded = (() => {
+        if (autoscroll && currentLineProgress) {
+            const scrollOfProgress = getScrollOfProgress();
+            if (!isVisible(scrollOfProgress)) {
+                shouldBeVisible({top: scrollOfProgress - heightOfLine, bottom: scrollOfProgress});
+            }
+        }
+    }).limit(100);
+
+    beforeUpdate(async () => {
+        container && autoscroll && scrollIfNeeded();
+    });
+
 </script>
 
 <style>
     .past {
-        --color-past: grey;
+        --color-past: rgba(0,0,0,0.1);
         background-color: var(--color-past);
     }
 
     .current {
-        --color-past: grey;
+        --color-past: rgba(0,0,0,0.1);
         --color-upcoming: transparent;
         background: linear-gradient(to right, var(--color-past) var(--progress), var(--color-upcoming) var(--progress));
     }
+
+    .line {
+        border-radius: 0.5rem;
+    }
+
+    .line:hover {
+        --color-hover: rgba(0,0,0,0.15);
+        background-color: var(--color-hover);
+        cursor: pointer;
+    }
+
+    .container {
+        position: relative;
+    }
+
 </style>
 
-<div class="container" style="--progress:{currentLineProgress * 100}%">
+<div bind:this={container} class="container" style="--progress:{currentLineProgress * 100}%">
     {#each prepare(transcription) as {start, end, text}, index (start, end)}
-    <span class="line" class:past={end < $time} class:current={isCurrent(start, end, index, $time)}>
+    <span class="line" class:past={end < $time} class:current={isCurrent(start, end, index, $time)} on:click={lineClick(index)}>
         {text}
     </span>
     {/each}

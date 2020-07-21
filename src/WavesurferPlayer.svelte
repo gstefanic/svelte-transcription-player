@@ -4,8 +4,9 @@
     import Pulsable from './Pulsable';
     import Hideable from './Hideable';
     import Blur from './Blur';
-    import { onMount, onDestroy, tick } from 'svelte';
-    import { time, playing, duration, activeIndex, minRegionDuration } from './store';
+    import { onMount, onDestroy, tick, getContext } from 'svelte';
+    import { fade } from 'svelte/transition';
+    import { time, playing, duration, activeIndex, minRegionDuration, contextKey, editMode } from './store';
     import { coordinatesInElement, coordinatesOnPage, toFixed, formatTime, whoosh, whooshBackground } from './utils';
     import interact from 'interactjs';
     import touchable from './interactable';
@@ -17,6 +18,9 @@
     export let playEnabled = true;
     export let regions;
     export let displayRegions = false;
+    export let autoplay = true;
+
+    const { isRegion } = getContext(contextKey);
 
     let wavesurferContainer;
     let waveElement;
@@ -69,7 +73,24 @@
     /* Play pause when var store changes */
     $: setPlaying($playing);
     $: if (!playEnabled) $playing = false;
-    const setPlaying = play => play ? wavesurfer && wavesurfer.play() : wavesurfer && wavesurfer.pause();
+    // const setPlaying = play => play ? wavesurfer && wavesurfer.play() : wavesurfer && wavesurfer.pause();
+
+    const setPlaying = play => {
+        if ($editMode) {
+            if (play) {
+                if (isRegion($activeIndex)) {
+                    // play region
+                    wavesurfer.play(regions[$activeIndex].start, regions[$activeIndex].end)
+                } else {
+                    wavesurfer.play(0);
+                }
+            } else {
+                wavesurfer && wavesurfer.pause();
+            }
+        } else {
+            play ? wavesurfer && wavesurfer.play() : wavesurfer && wavesurfer.pause();
+        }
+    }
 
 
     /* Automatically load audio when wavesurfer is initialized or url is changed*/
@@ -93,8 +114,6 @@
 
     /* Change width of wavesurfer on window resize */
     $: wavesurferWidth && ready && zoom();
-
-    // $: console.log('wavesurferWidth', wavesurferWidth);
 
     onMount(async () => {
 		wavesurfer = WaveSurfer.create({
@@ -279,7 +298,7 @@
 
     // $: console.log('regions changed', regions)
 
-    const regionResized = index => event => {
+    const regionResized = index => async event => {
         console.error('region updated index:', index, 'region', regions[index], 'event', event, regions);
         if (regions[index]) {
             const start = regions[index].start;
@@ -310,39 +329,23 @@
                     // console.error('fix next region start')
                 }
             }
-
-            // if (regions[index - 1] && start < regions[index - 1].end) {
-            //     if (regions[index - 1].start + $minRegionDuration > start) {
-            //         regions[index - 1].end = regions[index - 1].start + $minRegionDuration;
-            //         regions[index].start = regions[index - 1].end;
-            //     } else {
-            //         regions[index - 1].end = toFixed(start);
-            //     }
-            // }
-
-            // if (regions[index + 1] && end > regions[index + 1].start) {
-            //     if (regions[index + 1].end - $minRegionDuration < end) {
-            //         regions[index + 1].start = regions[index + 1].end - $minRegionDuration;
-            //         regions[index].end = regions[index + 1].start;
-            //     } else {
-            //         regions[index + 1].start = toFixed(end);
-            //     }
-            // }
         }
         zoomOnRegion(index);
+        await tick();
+        $playing = autoplay;
     };
 
     $: zoomOnRegion($activeIndex);
+    $: seekToRegion($activeIndex);
 
     const zoomOnRegion = index => {
 
+        if (!displayRegions) return;
+
         if (index === undefined) {
-            // console.log('unzoom')
             zoom();
             return;
         }
-
-        // console.log('zoomOnRegion', index, regions[index])
 
         const isZoomedOut = () => curPxPerSec <= minPxPerSec;
 
@@ -419,14 +422,23 @@
         wavesurfer && seekEnabled && wavesurfer.seekTo(((scrollLeft + cursorLeft) / curPxPerSec) / $duration);
     };
 
+    const seekToRegion = index => {
+        if (!ready) return
+        if (isRegion(index)) {
+            wavesurfer.seekTo(regions[index].start / $duration);
+        } else {
+            wavesurfer.seekTo(0);
+        }
+    };
+
 </script>
 
 <div class="container">
     <div class="playPauseButtonContainer">
         {#if $playing}
-        <div class="playPauseButton" class:disabled={!playEnabled} on:click={togglePlaying} in:whooshBackground></div>
-        {:else}
         <div class="playPauseButton paused" class:disabled={!playEnabled} on:click={togglePlaying} in:whooshBackground></div>
+        {:else}
+        <div class="playPauseButton" class:disabled={!playEnabled} on:click={togglePlaying} in:whooshBackground></div>
         {/if}
     </div>
 
@@ -465,13 +477,13 @@
         {/if}
 
         {#if visibility.time.visible}
-        <Blur css={'position: absolute; bottom: 0; left: 0; z-index: 100; font-size: 0.8rem; margin: 0 0 0.25rem 0.25rem'} transitionIn={whoosh} transitionOut={whoosh}>
+        <Blur css={'position: absolute; bottom: 0; left: 0; z-index: 100; font-size: 0.8rem; margin: 0 0 0.25rem 0.25rem'} transitionIn={whoosh} transitionOut={fade}>
             <span style="padding: 0.05rem 0.4rem;">{formatTime($time)}</span>
         </Blur>
         {/if}
 
         {#if visibility.time.visible && !visibility.zoomPercent.visible}
-        <Blur css={'position: absolute; bottom: 0; right: 0; z-index: 100; font-size: 0.8rem; margin: 0 0.25rem 0.25rem 0'} transitionIn={whoosh} transitionOut={whoosh}>
+        <Blur css={'position: absolute; bottom: 0; right: 0; z-index: 100; font-size: 0.8rem; margin: 0 0.25rem 0.25rem 0'} transitionIn={whoosh} transitionOut={fade}>
             <span style="padding: 0.05rem 0.4rem;">-{formatTime($duration - $time)}</span>
         </Blur>
         {/if}

@@ -1,6 +1,6 @@
 <script>
-	import { onMount, createEventDispatcher, getContext } from 'svelte';
-	import { activeIndex, duration, minRegionDuration, contextKey } from './store';
+	import { onMount, createEventDispatcher, getContext, tick } from 'svelte';
+	import { activeIndex, duration, minRegionDuration, contextKey, playing } from './store';
 	import interact from 'interactjs';
 	import NewInput from './NewInput';
 	import Dialog from './Dialog';
@@ -20,23 +20,41 @@
 		validateText, 
 		getPrevRegion, 
 		getNextRegion, 
-		mapRegionIndexToIndex, 
+		mapRegionIndexToIndex,
+		mapIndexToRegionIndex,
 		updateSection, 
 		insertSection 
 	} = getContext(contextKey);
 
+	const { shouldBeVisible } = getContext('resizable');
+
 	const { open: openModal, close: closeModal } = getContext('simple-modal');
 	const { open: openContextMenu, close: closeContextMenu } = getContext('simple-context-menu');
 
-	let text, sections, containerWidth, container;
+	let text, sections, containerWidth, container, wordElements;
 	const dispatch = createEventDispatcher();
 	const colors = ['red', 'green', 'blue', 'orangered'];
 
 	onMount(async () => {
 		const containerInteraction = interact(container).on('hold', on.background.contextMenu);
 
+		wordElements = container.getElementsByClassName('word');
+
 		return () => containerInteraction.unset();
 	});
+
+	$: scrollToRegion($activeIndex);
+	const scrollToRegion = (index) => {
+		if (sections && isRegion(index)) {
+			const indexInSectionArr = mapIndexToRegionIndex(index);
+			const {offset, length} = sections[indexInSectionArr] || {};
+			const wordElement = wordElements[offset];
+			const lastWordElement = wordElements[offset + length - 1];
+			if (wordElement && lastWordElement) {
+				shouldBeVisible({top: wordElement.offsetTop, bottom: lastWordElement.offsetTop + lastWordElement.offsetHeight});
+			}
+		}
+	};
 	
 	$: onTranscriptionChange(transcription, $activeIndex);
 
@@ -124,7 +142,7 @@
 		return res;
 	};
 
-	const createNewRegion = (offset, length) => {
+	const createNewRegion = async (offset, length) => {
 		let regionIndex = sections.findIndex(({offset: o, length: l}) => {
 			return offset < o;
 		});
@@ -173,6 +191,7 @@
 			});
 
 			transcription = transformToTransctiption(text, sections);
+			await tick();
 			$activeIndex = mapRegionIndexToIndex(regionIndex);
 		} else {
 			// TODO: show error
@@ -262,7 +281,7 @@
 				validateStart: validateStart,
 				validateEnd: validateEnd,
 				close: closeModal,
-				done: (section) => {
+				done: async (section) => {
 					const {text, start, end} = section;
 					if (validateText(text)) {
 						section.text = removeWhitespaces(text);
@@ -273,7 +292,7 @@
 						section.end = toFixed(end, 2);
 					}
 
-					const {success} = insertSection(index, section);
+					const {success} = await insertSection(index, section);
 
 					console.log('inserting seccess:', success);
 
@@ -291,12 +310,18 @@
 				transcription = transformToTransctiption(text, sections);
 				$activeIndex = sectionIndex;
 			},
-			click: ({detail}) => {
+			click: async ({detail}) => {
 				const {section, index: regionIndex, event} = detail;
 				console.log('on.section.click', event);
 				const {index: sectionIndex} = section;
 				if (regionIndex !== undefined && sectionIndex !== undefined) {
-					$activeIndex = sectionIndex;
+					if (sectionIndex === $activeIndex) {
+						$playing = !$playing;
+					} else {
+						$playing = false;
+						await tick();
+						$activeIndex = sectionIndex;
+					}
 				}
 				if (event.button === 2) {
 					on.section.hold({detail: detail});

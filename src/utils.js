@@ -272,8 +272,6 @@ export const whooshBackground = (node, params) => {
         unity = splitted[1].split(sizey)[1];
     }
 
-    console.log('existingSize', existingSize, `|${sizex}|${unitx}| |${sizey}|${unity}|`, splitted);
-    
 	return {
 		delay: params.delay || 0,
 		duration: params.duration || 400,

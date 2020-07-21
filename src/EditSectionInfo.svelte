@@ -19,8 +19,8 @@
 
     let isValidText, isValidStart, isValidEnd;
 
-    const _done = () => {
-        (done || toVoid)({
+    const _done = async () => {
+        await (done || toVoid)({
             text: section.text,
             start: beRegion ? toFixed(section.start) : undefined,
             end: beRegion ? toFixed(section.end) : undefined,
@@ -28,12 +28,12 @@
         _close();
     };
 
-    const _delete = () => {
-        (remove || toVoid)();
+    const _delete = async () => {
+        await (remove || toVoid)();
         _close();
     };
 
-    const _close = () => {
+    const _close = async () => {
         (close || toVoid)();
     };
 

@@ -1,5 +1,5 @@
 <script>
-    import { onMount, createEventDispatcher } from 'svelte';
+    import { onMount, createEventDispatcher, tick } from 'svelte';
     import RegionHandle from './RegionHandle';
     import TimeRangeInput from './TimeRangeInput';
     import Blur from './Blur';
@@ -30,7 +30,11 @@
 
     let active;
 
-    const pause = () => $playing = false;
+    const pause = async () => {
+        $playing = false
+        return tick();
+    };
+
     $: active = $activeIndex === index;
     $: !active && pause();
 
@@ -79,9 +83,14 @@
     const on = {
         region: {
             hold: event => console.log('hold'),
-            tap: event => {
-                pause();
-                $activeIndex = index;
+            tap: async event => {
+                console.log('@region.tap', index, $activeIndex)
+                if ($activeIndex === index) {
+                    $playing = !$playing;
+                } else {
+                    await pause();
+                    $activeIndex = index;
+                }
             },
             resized: () => {
                 dispatch('resized');

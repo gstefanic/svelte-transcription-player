@@ -1,5 +1,5 @@
 <script>
-	import { setContext } from 'svelte';
+	import { setContext, tick } from 'svelte';
 	import WavesurferPlayer from './WavesurferPlayer';
 	import TranscriptionView from './TranscriptionView';
 	import TranscriptionEdit from './TranscriptionEdit';
@@ -7,29 +7,43 @@
 	import SimpleModal from './SimpleModal';
 	import ContextMenu from './ContextMenu';
 	import { isFloat, toFixed, countWords, removeWhitespaces, formatTime } from './utils';
-	import { contextKey, duration, minRegionDuration } from './store';
+	import { contextKey, duration, minRegionDuration, editMode, activeIndex } from './store';
 	export let audio;
 	// export let transcription;
 
-	let editMode = false;
-
 	let transcriptionData = [{
         "text": "The snow glows white on the mountain tonight.",
-        "start": 1,
-		"end": 17,
+        "start": 13.79,
+        "end": 17
     }, {
         "text": "Not a footprint to be seen.",
-        "start": undefined,
-		"end": undefined,
+        "start": 17.36,
+        "end": 20
     }, {
-        "text": "Not a footprint to be seen.",
-        "start": 100.36,
-		"end": 130,
+        "text": "A kingdom of isolation.",
+        "start": 21.01,
+        "end": 23.94
+    }, {
+        "text": "And it looks like I'm the queen.",
+        "start": 24.23,
+        "end": 27.15
+    }, {
+        "text": "The wind is howling like this swirling storm inside.",
+        "start": 28.86,
+        "end": 35
+    }, {
+        "text": "Couldn't keep it in, Heaven knows I tried.",
+        "start": 35.65,
+        "end": 41.15
     }];
 
-	const toggleEdit = () => editMode = !editMode;
+	const toggleEdit = async () => {
+		setTimeout(() => $activeIndex = -1, 1);
+		$editMode = !$editMode;
+	};
 
 	let fontSize = 1.5;
+	let autoplay = true, autoscroll = true;
 
 	const changeFont = increase => () => fontSize = Math.min(2, Math.max(0.75, increase ? fontSize + 0.25 : fontSize - 0.25));
 
@@ -236,9 +250,10 @@
 		};
 	};
 
-	const insertSection = (index, section, t = transcriptionData) => {
+	const insertSection = async (index, section, t = transcriptionData) => {
 		if (index < 0 || index > t.length) {
 			throw new Error('index out of bounds', index, section, t);
+			await tick();
 			return {
 				success: false,
 				transcription: t,
@@ -359,23 +374,26 @@
 		<SimpleModal>
 			<WavesurferPlayer 
 				url={audio} 
-				zoomEnabled={editMode} 
-				seekEnabled={!editMode} 
-				moveEnabled={editMode} 
-				playEnabled={!editMode} 
+				zoomEnabled={$editMode} 
+				seekEnabled={!$editMode} 
+				moveEnabled={$editMode} 
+				playEnabled={!$editMode || true} 
 				bind:regions={transcriptionData}
-				displayRegions={editMode}
+				bind:autoplay
+				displayRegions={$editMode}
 			/>
 			<div class="transcription-container">
-				<Resizable>
-					{#if editMode}
+				<Resizable {autoscroll}>
+					{#if $editMode}
 						<TranscriptionEdit bind:transcription={transcriptionData} {fontSize}/>
 					{:else}
-						<TranscriptionView transcription={transcriptionData} />
+						<TranscriptionView transcription={transcriptionData} {fontSize}/>
 					{/if}
 				</Resizable>
 			</div>
-			<button on:click={toggleEdit}>{editMode ? 'view' : 'edit'}</button>
+			<button on:click={toggleEdit}>{$editMode ? 'view' : 'edit'}</button>
+			<label style="display: inline-block;"><input type=checkbox bind:checked={autoplay}> Autoplay</label>
+			<label style="display: inline-block;"><input type=checkbox bind:checked={autoscroll}> Autoscroll</label>
 			<button on:click={() => console.log(transcriptionData)}>{'print'}</button>
 			<span class="font-size decrease" on:click={changeFont(false)}></span>
 			<span class="font-size" on:click={changeFont(true)}></span>

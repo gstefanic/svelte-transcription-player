@@ -1,9 +1,12 @@
 <script>
-    import { onMount, createEventDispatcher } from 'svelte';
+    import { onMount, createEventDispatcher, setContext } from 'svelte';
     import interact from 'interactjs';
 
     export let maxHeight = 300;
     export let minHeight = 100;
+    export let autoscroll;
+
+    const key = 'resizable';
 
     const dispatch = createEventDispatcher();
     let container;
@@ -30,6 +33,31 @@
             }
         }
     };
+
+    const isVisible = (offsetTop) => {
+        const containerTop = container.scrollTop;
+        const containerBottom = containerTop + container.offsetHeight;
+        console.log('isVisible', offsetTop, containerTop, containerBottom, containerTop <= offsetTop && offsetTop <= containerBottom);
+        return (containerTop <= offsetTop && offsetTop <= containerBottom);
+    };
+
+    const shouldBeVisible = ({top, bottom}) => {
+        console.log('shouldBeVisible', isVisible(top), isVisible(bottom))
+        if (autoscroll && (!isVisible(top) || !isVisible(bottom))) {
+            scrollTo(top);
+        }
+    };
+
+    const scrollTo = (offsetTop) => {
+        container.scrollTo({top: offsetTop, behavior: 'smooth'});
+    };
+
+    setContext(key, {
+        getWrapper: () => container,
+        isVisible: isVisible,
+        shouldBeVisible: shouldBeVisible,
+        scrollTo: scrollTo,
+    });
 
 </script>
 

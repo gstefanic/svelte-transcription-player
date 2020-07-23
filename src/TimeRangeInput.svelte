@@ -1,6 +1,5 @@
 <script>
     import { createEventDispatcher } from 'svelte';
-    import CustomInput from './CustomInput';
     import NewInput from './NewInput';
     import { isFloat, toFixed } from './utils';
     var Color = require('color');

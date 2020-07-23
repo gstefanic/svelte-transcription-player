@@ -279,3 +279,36 @@ export const whooshBackground = (node, params) => {
 		css: (t, u) => `background-size: ${sizex * t}${unitx} ${sizey * t}${unity}`,
 	};
 };
+
+export const Iterator = (what, getFirst, fn, step, init = undefined) => {
+    const first = getFirst(what);
+    let acc = init, cur = first, index = 0;
+
+    const stop = value => {
+        step = () => false;
+        return value;
+    };
+
+    while (cur) {
+        acc = fn(acc, cur, stop, index, what, getFirst);
+        cur = step(cur, index, what, getFirst);
+        index++;
+    }
+    return acc;
+};
+
+export function getOffsetPosition(evt, parent){
+    var position = {
+        x: (evt.targetTouches) ? evt.targetTouches[0].pageX : evt.clientX,
+        y: (evt.targetTouches) ? evt.targetTouches[0].pageY : evt.clientY
+    };
+
+    while(parent.offsetParent){
+        position.x -= parent.offsetLeft - parent.scrollLeft;
+        position.y -= parent.offsetTop - parent.scrollTop;
+
+        parent = parent.offsetParent;
+    }
+
+    return position;
+}

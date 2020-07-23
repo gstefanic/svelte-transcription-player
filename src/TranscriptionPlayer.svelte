@@ -1,41 +1,39 @@
 <script>
-	import { setContext, tick } from 'svelte';
+	import { onMount, setContext, tick } from 'svelte';
 	import WavesurferPlayer from './WavesurferPlayer';
 	import TranscriptionView from './TranscriptionView';
 	import TranscriptionEdit from './TranscriptionEdit';
 	import Resizable from './Resizable';
 	import SimpleModal from './SimpleModal';
 	import ContextMenu from './ContextMenu';
-	import { isFloat, toFixed, countWords, removeWhitespaces, formatTime } from './utils';
+	import { isFloat, toFixed, countWords, removeWhitespaces, formatTime, coordinatesOnPage } from './utils';
 	import { contextKey, duration, minRegionDuration, editMode, activeIndex } from './store';
 	export let audio;
 	// export let transcription;
 
-	let transcriptionData = [{
-        "text": "The snow glows white on the mountain tonight.",
-        "start": 13.79,
-        "end": 17
-    }, {
-        "text": "Not a footprint to be seen.",
-        "start": 17.36,
-        "end": 20
-    }, {
-        "text": "A kingdom of isolation.",
-        "start": 21.01,
-        "end": 23.94
-    }, {
-        "text": "And it looks like I'm the queen.",
-        "start": 24.23,
-        "end": 27.15
-    }, {
-        "text": "The wind is howling like this swirling storm inside.",
-        "start": 28.86,
-        "end": 35
-    }, {
-        "text": "Couldn't keep it in, Heaven knows I tried.",
-        "start": 35.65,
-        "end": 41.15
-    }];
+	let transcriptionData = [
+		{ text: "The snow glows white on the mountain tonight.", },// start: 13.79, end: 17 },
+		{ text: "Not a footprint to be seen.", start: 17.36, end: 20 },
+		{ text: "A kingdom of isolation.", start: 21.01, end: 23.94 },
+		{ text: "And it looks like I'm the queen.", },// start: 24.23, end: 27.15 },
+		{ text: "The wind is howling like this swirling storm inside.", start: 28.86, end: 35 },
+		{ text: "Couldn't keep it in, Heaven knows I tried.", start: 35.65, end: 41.15 },
+		{ text: "Don't let them in, don't let them see.", start: 42.47, end: 45.98 },
+		{ text: "Be the good girl you always have to be.", start: 45.98, end: 49.41 },
+		{ text: "Conceal, don't feel, don't let them", },// start: 49.41, end: 52.65 },
+		{ text: "know", start: 52.65, end: 55.89 },
+		{ text: "Well, now they know.", start: 55.89, end: 59.22 },
+		{ text: "Let it go, let it go.", start: 59.22, end: 62.76 },
+		{ text: "Can't hold it back anymore.", start: 62.76, end: 66.32 },
+		{ text: "Let it go, let it go.", start: 66.32, end: 69.73 },
+		{ text: "Turn away and slam the door.", start: 69.73, end: 73.49 },
+		{ text: "I don't care.", start: 73.49, end: 76.26 },
+		{ text: "what they're going to say.", start: 76.26, end: 79.83 },
+		{ text: "Let the storm rage on.", start: 80.4, end: 84.43,  },
+		{ text: "The cold never bothered me anyway.", },// start: 84.43, end: 87.26,  },
+	];
+	
+	const toVoid = () => {};
 
 	const toggleEdit = async () => {
 		setTimeout(() => $activeIndex = -1, 1);
@@ -250,7 +248,7 @@
 		};
 	};
 
-	const insertSection = async (index, section, t = transcriptionData) => {
+	const insertSection = async (index, section, t = transcriptionData, optimization = false) => {
 		if (index < 0 || index > t.length) {
 			throw new Error('index out of bounds', index, section, t);
 			await tick();
@@ -280,7 +278,9 @@
 			t.splice(index, 0, section);
 		}
 
-		t = joinEmptySections(t);
+		if (optimization) {
+			t = joinEmptySections(t);
+		}
 
 		return {
 			success: true,
@@ -309,6 +309,23 @@
 		return tmp;
 	};
 
+	const getColor = (index, t = transcriptionData) => {
+		if (t && t[index]) {
+			const colors = ['red', 'green', 'blue', 'orangered'];
+			if (isRegion(index, t)) {
+				const possibleColors = colors.filter(color => {
+					const prevRegion = getPrevRegion(index, t);
+					const nextRegion = getNextRegion(index, t);
+					const prevColor = prevRegion ? prevRegion.color : undefined;
+					const nextColor = nextRegion ? nextRegion.color : undefined;
+					return color !== prevColor && color !== nextColor;
+				});
+	
+				return possibleColors[Math.floor(Math.random() * possibleColors.length)];
+			}
+		}
+	};
+
 	setContext(contextKey, {
 		isRegion: isRegion,
 		getPrevRegion: getPrevRegion,
@@ -328,7 +345,33 @@
 		getMaxEnd: getMaxEnd,
 		updateSection: updateSection,
 		insertSection: insertSection,
+		getColor: getColor
 	});
+
+	let openContextMenu, closeContextMenu, settingButton, settingOpened;
+
+	const onSettingClicked = event => {
+		settingOpened = !settingOpened;
+	};
+
+	$: settingOpened ? openSetting() : (closeContextMenu || toVoid)();
+
+	const openSetting = () => {
+		const { pageX, pageY } = coordinatesOnPage(settingButton, { clientX: 0, clientY: 0});
+		openContextMenu({
+			pageX: pageX, 
+			pageY: pageY,
+			closeOnAction: false,
+			openDirection: 'left',
+		}, [
+			{ name: 'Autoscroll', type: 'checkbox', callback: checked => autoscroll = checked, checked: autoscroll},
+			{ name: 'Autoplay', type: 'checkbox', callback: checked => autoplay = checked, checked: autoplay},
+			{ name: 'Font Size', submenu: [
+				{ name: 'Decrease', callback: changeFont(false), },
+				{ name: 'Increase', callback: changeFont(true), },
+			]},
+		]);
+	};
 
 </script>
 
@@ -344,33 +387,24 @@
 	}
 
 	.transcription-container {
-		margin-top: 0.5rem;
 		height: 100%;
 		font-size: var(--font-size);
 	}
 
-	.font-size {
-		background-image: url('./images/format_size-24px.svg');
+	.settings {
+		background-image: url('./images/settings-24px.svg');
         background-repeat: no-repeat;
         background-position: center;
         background-size: 80% 80%;
-		height: 24px; 
-		width: 24px;
+		height: 2rem; 
+		width: 2rem;
 		display: inline-block;
-	}
-
-	.font-size.decrease {
-		-moz-transform: scaleX(-1);
-		-o-transform: scaleX(-1);
-		-webkit-transform: scaleX(-1);
-		transform: scaleX(-1);
-		filter: FlipH;
-		-ms-filter: "FlipH";
+		cursor: pointer;
 	}
 </style>
 
 <div class="container" style="--font-size:{fontSize}rem">
-	<ContextMenu>
+	<ContextMenu bind:open={openContextMenu} bind:close={closeContextMenu}>
 		<SimpleModal>
 			<WavesurferPlayer 
 				url={audio} 
@@ -382,6 +416,11 @@
 				bind:autoplay
 				displayRegions={$editMode}
 			/>
+			<div style="display: flex; align-items: center; justify-content: flex-end; width: 100%;">
+				<button on:click={toggleEdit} style="margin: 0;">{$editMode ? 'view' : 'edit'}</button>
+				<button on:click={() => console.log(transcriptionData)} style="margin: 0;">Print</button>
+				<span class="settings" bind:this={settingButton} on:click={onSettingClicked}></span>
+			</div>
 			<div class="transcription-container">
 				<Resizable {autoscroll}>
 					{#if $editMode}
@@ -391,12 +430,12 @@
 					{/if}
 				</Resizable>
 			</div>
-			<button on:click={toggleEdit}>{$editMode ? 'view' : 'edit'}</button>
-			<label style="display: inline-block;"><input type=checkbox bind:checked={autoplay}> Autoplay</label>
+			<!-- <label style="display: inline-block;"><input type=checkbox bind:checked={autoplay}> Autoplay</label>
 			<label style="display: inline-block;"><input type=checkbox bind:checked={autoscroll}> Autoscroll</label>
 			<button on:click={() => console.log(transcriptionData)}>{'print'}</button>
 			<span class="font-size decrease" on:click={changeFont(false)}></span>
-			<span class="font-size" on:click={changeFont(true)}></span>
+			<span class="font-size" on:click={changeFont(true)}></span> -->
+			<!-- <span class="settings" bind:this={settingButton} on:click={openSetting}></span> -->
 		</SimpleModal>
 	</ContextMenu>
 </div>

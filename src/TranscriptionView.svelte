@@ -2,6 +2,7 @@
     import { onMount, beforeUpdate, getContext, tick } from 'svelte';
     import { duration, time, activeIndex, playing } from './store';
     import { textMetrics } from './utils';
+    import './limit';
     export let transcription;
     export let fontSize;
 
@@ -15,11 +16,11 @@
 
     let autoscroll = true;
 
-    const { getWrapper, isVisible, shouldBeVisible } = getContext('resizable');
+    const { getContainer, isVisible, shouldBeVisible } = getContext('resizable');
 
     onMount(async () => {
         lines = container.getElementsByClassName('line');
-        const wrapper = getWrapper();
+        const wrapper = getContainer();
 
         let timer;
         let wrapperOnScroll = () => {

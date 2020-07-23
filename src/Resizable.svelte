@@ -52,16 +52,43 @@
         container.scrollTo({top: offsetTop, behavior: 'smooth'});
     };
 
+    let containerWidth;
+    $: emit('container-width-change', containerWidth);
+
+    let listeners = {};
+    const on = (event, cb) => {
+        if (!(listeners[event] instanceof Set)) {
+            listeners[event] = new Set();
+        }
+        listeners[event].add(cb);
+    };
+
+    const off = (event, cb) => {
+        if (listeners[event] instanceof Set) {
+            listeners[event].delete(cb);
+        }
+    };
+
+    const emit = (event, ...args) => {
+        if (listeners[event] instanceof Set) {
+            listeners[event].forEach(cb => {
+                cb(...args);
+            });
+        }
+    };
+
     setContext(key, {
-        getWrapper: () => container,
+        getContainer: () => container,
         isVisible: isVisible,
         shouldBeVisible: shouldBeVisible,
         scrollTo: scrollTo,
+        on, 
+        off,
     });
 
 </script>
 
-<div bind:this={container} class="container" style="--max-h:{maxHeight}px; --min-h:{minHeight}px;">
+<div bind:this={container} bind:offsetWidth={containerWidth} class="container" style="--max-h:{maxHeight}px; --min-h:{minHeight}px;">
     <slot></slot>
 </div>
 <div class="handle" use:verticalDrag />

@@ -22,8 +22,6 @@
     $: minEnd = start + $minRegionDuration;
     $: handleColor = Color(color).lighten(0.75).fade(0.75).string();
 
-    $: console.log('handleColor', handleColor);
-    
     let resizing, draggingHandle;
 
     $: if (resizing) $playing = false;

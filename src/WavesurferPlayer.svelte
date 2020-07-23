@@ -2,7 +2,6 @@
     import WaveSurfer from 'wavesurfer.js';
     import WavesurferRegion from './WavesurferRegion';
     import Pulsable from './Pulsable';
-    import Hideable from './Hideable';
     import Blur from './Blur';
     import { onMount, onDestroy, tick, getContext } from 'svelte';
     import { fade } from 'svelte/transition';
@@ -234,7 +233,9 @@
                     const relativePositionInWave = offsetLeft / wavesurferWidth;
 
                     wavesurfer.zoom(pxPerSec);
-                    centerTimeAt(mouseAtTime, relativePositionInWave);
+                    tick().then(() => {
+                        centerTimeAt(mouseAtTime, relativePositionInWave);
+                    });
                 } else {
                     wavesurfer.zoom(pxPerSec);
                 }

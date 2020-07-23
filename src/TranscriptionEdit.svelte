@@ -1,12 +1,15 @@
 <script>
-	import { onMount, createEventDispatcher, getContext, tick } from 'svelte';
+	import { onMount, createEventDispatcher, getContext, setContext, tick } from 'svelte';
 	import { activeIndex, duration, minRegionDuration, contextKey, playing } from './store';
 	import interact from 'interactjs';
 	import NewInput from './NewInput';
-	import Dialog from './Dialog';
 	import EditSectionInfo from './EditSectionInfo';
 	import { countWords, removeWhitespaces, isFloat, toFixed } from './utils';
-	import { highlightable } from './highlightable';
+	// import { highlightable } from './highlightable';
+	import Highlightable from './Highlightable';
+	import Section from './Section';
+
+	const log = console.log;
 
 	export let transcription;
 	export let fontSize;
@@ -23,231 +26,161 @@
 		mapRegionIndexToIndex,
 		mapIndexToRegionIndex,
 		updateSection, 
-		insertSection 
+		insertSection,
+		getColor,
 	} = getContext(contextKey);
 
-	const { shouldBeVisible } = getContext('resizable');
-
+	const { getContainer, shouldBeVisible, on: resizableOn, off: resizableOff } = getContext('resizable');
 	const { open: openModal, close: closeModal } = getContext('simple-modal');
 	const { open: openContextMenu, close: closeContextMenu } = getContext('simple-context-menu');
-
-	let text, sections, containerWidth, container, wordElements;
 	const dispatch = createEventDispatcher();
-	const colors = ['red', 'green', 'blue', 'orangered'];
+
+	let container, containerWidth;
 
 	onMount(async () => {
-		const containerInteraction = interact(container).on('hold', on.background.contextMenu);
+		container = getContainer();
+		const oldPositioning = container.style.position;
+		container.style.position = 'relative';
 
-		wordElements = container.getElementsByClassName('word');
+		const onContainerWidthChange = width => containerWidth = width;
+		resizableOn('container-width-change', onContainerWidthChange);
 
-		return () => containerInteraction.unset();
+		container.addEventListener('click', on.container.click);
+		container.addEventListener('contextmenu', on.container.contextMenu);
+
+		// log({wordElementsBySection});
+
+		return () => {
+			container.style.position = oldPositioning;
+			resizableOff('container-width-change', onContainerWidthChange);
+			container.removeEventListener('click', on.container.click);
+			container.removeEventListener('contextmenu', on.container.contextMenu);
+		}
 	});
 
-	$: scrollToRegion($activeIndex);
-	const scrollToRegion = (index) => {
-		if (sections && isRegion(index)) {
-			const indexInSectionArr = mapIndexToRegionIndex(index);
-			const {offset, length} = sections[indexInSectionArr] || {};
-			const wordElement = wordElements[offset];
-			const lastWordElement = wordElements[offset + length - 1];
-			if (wordElement && lastWordElement) {
-				shouldBeVisible({top: wordElement.offsetTop, bottom: lastWordElement.offsetTop + lastWordElement.offsetHeight});
+	// $: text = transformTransctiption(transcription);
+
+	// const transformTransctiption = () => {
+	// 	let offset = 0, text = '';
+	// 	transcription && transcription.forEach((section, index) => {
+	// 		text += section.text;
+	// 		const length = section.text.split(' ').length;
+	// 		if (isRegion(section)) {
+	// 			Object.assign(section, {
+	// 				offset: offset,
+	// 				length: length,
+	// 				color: getColor(index, transcription),
+	// 			});
+	// 		} else {
+	// 			Object.assign(section, {
+	// 				offset: offset,
+	// 				length: 0,
+	// 			});
+	// 		}
+	// 		offset += length;
+	// 	});
+	// 	return text;
+	// };
+
+	$: log({wordElementsBySection});
+	let wordElementsBySection = [];
+
+	$: wordElements = wordElementsBySection.flat().filter(e => e instanceof HTMLElement);
+
+	setContext('sections', {
+		getTargets: (side, index) => {
+			if (wordElementsBySection && (index < 0 || index >= wordElementsBySection.length)) {
+				throw new Error('implementation error');
 			}
+			if (side === 'left') {
+				const { index: prevRegionIndex } = getPrevRegion(index, transcription);
+				return wordElementsBySection.slice(prevRegionIndex + 1, index + 1).flat().filter(e => e instanceof HTMLElement);
+			} else if (side === 'right') {
+				const { index: nextRegionIndex } = getNextRegion(index);
+				const endIndex = nextRegionIndex === -1 ? wordElementsBySection.length : nextRegionIndex;
+				return wordElementsBySection.slice(index, endIndex).flat().filter(e => e instanceof HTMLElement);
+			}
+			throw new Error('implementation error');
+		},
+		getWordElements: () => wordElements,
+	});
+
+	const resize = sectionIndex => ({detail: {side, diff}}) => {
+		// const {offset, length} = transcription[sectionIndex];
+		if (!isRegion(sectionIndex, transcription)) {
+			throw new Error('implementation error');
 		}
-	};
-	
-	$: onTranscriptionChange(transcription, $activeIndex);
-
-	const onTranscriptionChange = () => {
-		const {text: t, sections: s} = transformFromTransctiption(sections);
-		text = t;
-		sections = s;
-	};
-
-	const transformFromTransctiption = () => {
-		const initValue = {
-			text: '',
-			sections: [],
-			len: 0,
-		};
-
-		if (!transcription) {
-			return initValue;
-		}
-
-		return transcription.reduce(({text, sections, len}, section, index) => {
-			const wordsInSection = section.text.trim().split(' ').length;
-			let newSection;
-
-			if (section.end !== undefined && section.start !== undefined) {
-
-				if (!section.color || sections.length && sections[sections.length - 1].color === section.color) {
-					const possibleColors = colors.filter(color => !(sections[sections.length - 1] && sections[sections.length - 1].color === color));
-
-					section.color = possibleColors[Math.floor(Math.random() * possibleColors.length)];
+		const t = transcription;
+		const sectionText = t[sectionIndex].text;
+		const sectionWords = sectionText.split(' ');
+		log('resize', {diff});
+		if (side === 'left') {
+			if (diff < 0) {
+				// trim start
+				const out = sectionWords.slice(0, -diff).join(' ');
+				const inside = sectionWords.slice(-diff).join(' ');
+				t[sectionIndex].text = inside;
+				if (sectionIndex === 0 || isRegion(sectionIndex - 1, transcription)) {
+					t.splice(sectionIndex, 0, { text: out });
+				} else {
+					t[sectionIndex - 1].text += ' ' + out;
 				}
+			} else if (diff > 0) {
+				// extend start
+				if (sectionIndex === 0) {
+					throw new Error('implementation error. When extending left handle, section index should be strictly larger than 0.');
+				} else if (isRegion(sectionIndex - 1)) {
+					throw new Error('implementation error');
+				} else {
+					const prevSectionText = transcription[sectionIndex - 1].text;
+					const prevSectionWords = prevSectionText.split(' ');
+					const inside = prevSectionWords.slice(-diff).join(' ');
+					const out = prevSectionWords.slice(0, prevSectionWords.length - diff).join(' ');
 
-				newSection = {
-					offset: len,
-					length: wordsInSection,
-					index: index,
-					color: section.color,
-					start: section.start,
-					end: section.end,
-					resizable: index === $activeIndex
-				};
-			}
-			return {
-				text: text ? (text + ' ' + section.text.trim()) : section.text.trim(),
-				sections: newSection ? sections.concat([newSection]) : sections,
-				len: len + wordsInSection,
-			};
-		}, initValue);
-	};
-
-	const transformToTransctiption = (text, sections) => {
-		const words = text.split(' ');
-		let lastOffset = 0;
-		let lastLength = 0;
-		const res = sections.reduce((acc, {offset, length, color, start, end}, index, arr) => {
-			const lastEnd = lastOffset + lastLength;
-
-			const nonSelected = words.slice(lastEnd, offset);
-
-			if (nonSelected && nonSelected.length > 0) {
-				acc.push({
-					text: nonSelected.join(' '),
-				});
-			}
-
-			acc.push({
-				text: words.slice(offset, offset + length).join(' '),
-				color: color,
-				start: start,
-				end: end,
-			});
-
-			lastOffset = offset;
-			lastLength = length;
-
-			if (index === arr.length - 1 && (lastOffset + lastLength) < words.length) {
-				const lastNonSeclected = words.slice(lastOffset + lastLength, words.length);
-				acc.push({
-					text: lastNonSeclected.join(' '),
-				});
-			}
-
-			return acc;
-		}, []);
-		return res;
-	};
-
-	const createNewRegion = async (offset, length) => {
-		let regionIndex = sections.findIndex(({offset: o, length: l}) => {
-			return offset < o;
-		});
-
-		let sectionIndex;
-
-		if (regionIndex === -1) {
-			regionIndex = sections.length;
-			sectionIndex = transcription.length - 1;
-		} else {
-			sectionIndex = mapRegionIndexToIndex(regionIndex);
-		}
-
-		const getStartTime = () => {
-			const {region: prevRegion} = getPrevRegion(sectionIndex);
-			return prevRegion ? prevRegion.end : 0;
-		};
-
-		const getEndTime = () => {
-			if (transcription[sectionIndex] && transcription[sectionIndex].start !== undefined) {
-				return transcription[sectionIndex].start;
-			} else {
-				return $duration;
-			}
-		};
-
-		const getColor = () => {
-			const notAllowedColors = [
-				(sections[regionIndex - 1] || {}).color,
-				(sections[regionIndex + 1] || {}).color,
-			];
-			const possibleColors = colors.filter(color => notAllowedColors.includes(color));
-			return possibleColors[Math.floor(Math.random() * possibleColors.length)];
-		}
-
-		const start = getStartTime();
-		const end = getEndTime();
-
-		if (end - start >= $minRegionDuration) {
-			sections.splice(regionIndex, 0, {
-				offset: offset,
-				length: length,
-				start: start,
-				end: end,
-				color: getColor(),
-			});
-
-			transcription = transformToTransctiption(text, sections);
-			await tick();
-			$activeIndex = mapRegionIndexToIndex(regionIndex);
-		} else {
-			// TODO: show error
-		}
-	};
-
-	const startEditingSection = index => {
-		const {text, start, end} = transcription[index];
-
-		const {min: minStart} = startValidator(index);
-		const {max: maxEnd} = endValidator(index);
-
-		const validateStart = end => value => minStart <= value && value <= (end - $minRegionDuration);
-		const validateEnd = start => value => (start + $minRegionDuration) <= value && value <= maxEnd;
-
-		const wasRegion = isRegion(index);
-
-		openModal(
-			EditSectionInfo,
-			{
-				section: {
-					text: text,
-					start: wasRegion ? start : (getPrevRegion(index).region || {end: 0}).end,
-					end: wasRegion ? end : (getNextRegion(index).region || {start: $duration}).start,
-				},
-				beRegion: wasRegion,
-				validateText: validateText,
-				validateStart: validateStart,
-				validateEnd: validateEnd,
-				close: closeModal,
-				remove: () => deleteSection(index),
-				done: (section) => {
-					const {text, start, end} = section;
-					if (validateText(text)) {
-						const trimmedText = removeWhitespaces(text);
-						transcription[index].text = trimmedText;
-					}
-
-					if (isRegion(section)) {
-						if (validateStart(end)(start) && validateEnd(start)(end)) {
-							updateSection(index, {
-								start: toFixed(start, 2),
-								end: toFixed(end, 2),
-							});
-							console.log('transcription updated', JSON.parse(JSON.stringify(transcription)))
-							if (!wasRegion) {
-								$activeIndex = index;
-							}
-						}
+					t[sectionIndex].text = inside + ' ' + t[sectionIndex].text;
+					if (diff === prevSectionWords.length) {
+						t.splice(sectionIndex - 1, 1);
 					} else {
-						removeRegion(index);
+						t[sectionIndex - 1].text = out;
 					}
-
-				},
-			},
-		);
+				}
+			}
+		} else if (side === 'right') {
+			if (diff < 0) {
+				log('extend end');
+				if (sectionIndex === transcription.length - 1) {
+					throw new Error('implementation error');
+				} else if (isRegion(sectionIndex + 1, transcription)) {
+					throw new Error('implementation error');
+				} else {
+					const nextSectionText = transcription[sectionIndex + 1].text;
+					const nextSectionWords = nextSectionText.split(' ');
+					const inside = nextSectionWords.slice(0, -diff).join(' ');
+					const out = nextSectionWords.slice(-diff).join(' ');
+					log('extend end', {diff, nextSectionWords: nextSectionWords.length});
+					t[sectionIndex].text += ' ' + inside;
+					if (-diff === nextSectionWords.length) {
+						t.splice(sectionIndex + 1, 1);
+					} else {
+						t[sectionIndex + 1].text = out;
+					}
+				}
+			} else if (diff > 0) {
+				const inside = sectionWords.slice(0, sectionWords.length - diff).join(' ');
+				const out = sectionWords.slice(-diff).join(' ');
+				log('trim end', {inside, out, diff});
+				t[sectionIndex].text = inside;
+				if (sectionIndex === transcription.length - 1 || isRegion(sectionIndex + 1, transcription)) {
+					t.splice(sectionIndex + 1, 0, { text: out});
+				} else {
+					t[sectionIndex + 1].text = out + ' ' + t[sectionIndex + 1].text;
+				}
+			}
+		} else {
+			throw new Error('invalid handle side');
+		}
+		transcription = t;
+		log({transcription});
 	};
 
 	const insertText = (index) => {
@@ -292,9 +225,61 @@
 						section.end = toFixed(end, 2);
 					}
 
-					const {success} = await insertSection(index, section);
+					const {success} = await insertSection(index, section, transcription, true);
 
-					console.log('inserting seccess:', success);
+					log('inserting success:', success);
+
+				},
+			},
+		);
+	};
+
+	const startEditingSection = index => {
+		const {text, start, end} = transcription[index];
+
+		const {min: minStart} = startValidator(index);
+		const {max: maxEnd} = endValidator(index);
+
+		const validateStart = end => value => minStart <= value && value <= (end - $minRegionDuration);
+		const validateEnd = start => value => (start + $minRegionDuration) <= value && value <= maxEnd;
+
+		const wasRegion = isRegion(index, transcription);
+
+		openModal(
+			EditSectionInfo,
+			{
+				section: {
+					text: text,
+					start: wasRegion ? start : (getPrevRegion(index).region || {end: 0}).end,
+					end: wasRegion ? end : (getNextRegion(index).region || {start: $duration}).start,
+				},
+				beRegion: wasRegion,
+				validateText: validateText,
+				validateStart: validateStart,
+				validateEnd: validateEnd,
+				close: closeModal,
+				remove: () => deleteSection(index),
+				done: (section) => {
+					const {text, start, end} = section;
+					if (validateText(text)) {
+						const trimmedText = removeWhitespaces(text);
+						transcription[index].text = trimmedText;
+					}
+
+					if (isRegion(section)) {
+						if (validateStart(end)(start) && validateEnd(start)(end)) {
+							updateSection(index, {
+								start: toFixed(start, 2),
+								end: toFixed(end, 2),
+							});
+							console.log('transcription updated', JSON.parse(JSON.stringify(transcription)))
+							if (!wasRegion) {
+								$activeIndex = index;
+							}
+						}
+					} else {
+						removeRegion(index);
+					}
 
 				},
 			},
@@ -303,34 +288,20 @@
 
 	const on = {
 		section: {
-			change: ({detail}) => {
-				console.log('on.section.change', detail);
-				const {index: regionIndex, sections: newSections, oldSections, section} = event.detail;
-				const {index: sectionIndex} = section;
-				transcription = transformToTransctiption(text, sections);
-				$activeIndex = sectionIndex;
-			},
-			click: async ({detail}) => {
-				const {section, index: regionIndex, event} = detail;
-				console.log('on.section.click', event);
-				const {index: sectionIndex} = section;
-				if (regionIndex !== undefined && sectionIndex !== undefined) {
-					if (sectionIndex === $activeIndex) {
-						$playing = !$playing;
-					} else {
-						$playing = false;
-						await tick();
-						$activeIndex = sectionIndex;
-					}
+			click: sectionIndex => async ({detail: {event}}) => {
+				if (sectionIndex === $activeIndex) {
+					$playing = event.button === 0 && !$playing;
+				} else {
+					$playing = false;
+					await tick();
+					$activeIndex = sectionIndex;
 				}
 				if (event.button === 2) {
-					on.section.hold({detail: detail});
+					on.section.hold(sectionIndex)({detail: {event}});
 				}
 			},
-			hold: ({detail}) => {
-				const {section, index: regionIndex, event} = detail;
-				const {index} = section;
-				console.log('onSectionHold', regionIndex, index);
+			hold: sectionIndex => ({detail: {event}}) => {
+				console.log('onSectionHold', sectionIndex);
 
 				openContextMenu(
 					{
@@ -338,22 +309,22 @@
 						pageY: event.y,
 					}, [{
 							name: 'Edit', 
-							callback: () => startEditingSection(index),
+							callback: () => startEditingSection(sectionIndex),
 						}, {
 							name: 'Insert text', 
 							submenu: [{
 								name: 'Before', 
-								callback: () => insertText(index),
+								callback: () => insertText(sectionIndex),
 							}, {
 								name: 'After', 
-								callback: () => insertText(index + 1),
+								callback: () => insertText(sectionIndex + 1),
 							},]
 						}, {
 							name: 'Remove region', 
-							callback: () => removeRegion(index),
+							callback: () => removeRegion(sectionIndex),
 						}, {
 							name: 'Delete', 
-							callback: () => deleteSection(index),
+							callback: () => deleteSection(sectionIndex),
 							divider: true,
 						},
 					]
@@ -361,49 +332,70 @@
 			},
 		},
 		word: {
-			click: ({detail}) => {
-				const {offset, event} = detail || {};
+			click: sectionIndex => ({detail: {event, wordIndex}}) => {
 				console.log('onWordClick', event);
 				$activeIndex = undefined;
 				if (event.button === 2) {
-					on.word.hold({detail: detail});
+					on.word.hold(sectionIndex)({detail: {event, wordIndex}});
 				}
 			},
-			hold: ({detail}) => {
-				const {offset, event} = detail || {};
-
+			hold: sectionIndex => ({detail: {wordIndex, event}}) => {
 				console.log('on word hold')
+				const {end: start} = getPrevRegion(sectionIndex).region || {end: 0};
+				const {start: end} = getNextRegion(sectionIndex).region || {start: $duration};
 
-				let tmpOffset = 0, ifItWereRegion;
-				for (var index = 0; index < transcription.length; index++) {
-					const sectionWordCount = transcription[index].text.split(' ').length;
-					tmpOffset += sectionWordCount;
-					console.log('iteration', sectionWordCount, tmpOffset)
-					if (offset < tmpOffset) {
-						ifItWereRegion = {
-							offset: tmpOffset - sectionWordCount,
-							length: sectionWordCount,
-						}
-						break;
-					}
-				}
-				console.log('onWordHold', offset, event, index, 'ifItWereRegion', ifItWereRegion);
+				const canCreateRegion = start <= end - $minRegionDuration;
 
 				openContextMenu({
 					pageX: event.x,
 					pageY: event.y,
 				}, [
-					{ name: 'Edit', callback: () => startEditingSection(index), },
+					{ name: 'Edit', callback: () => startEditingSection(sectionIndex), },
 					{ name: 'Create region', submenu: [
-						{ name: 'Word', callback: () => createNewRegion(offset, 1), },
-						{ name: 'Section', callback: () => createNewRegion(ifItWereRegion.offset, ifItWereRegion.length) },
+						{ name: 'Word', disabled: !canCreateRegion, callback: () => {
+							if (!isRegion(sectionIndex)) {
+								if (typeof wordIndex !== 'number') {
+									throw new Error('implementation error')									;
+								}
+								const {end: start} = getPrevRegion(sectionIndex).region || {end: 0};
+								const {start: end} = getNextRegion(sectionIndex).region || {start: $duration};
+								if (start <= end - $minRegionDuration) {
+									const t = transcription.flat();
+									
+									const wordsInSection = t[sectionIndex].text.split(' ');
+									const leftText = wordsInSection.slice(0, wordIndex).join(' ');
+									const rightText = wordsInSection.slice(wordIndex + 1).join(' ');
+									updateSection(sectionIndex, { start, end, text: wordsInSection[wordIndex] }, t);
+	
+									if (rightText) {
+										insertSection(sectionIndex + 1, { text: rightText }, t, false);
+									}
+	
+									if (leftText) {
+										insertSection(sectionIndex, { text: leftText }, t, false);
+									}
+	
+									transcription = t;
+								}
+							}
+						}, },
+						{ name: 'Section', disabled: true, callback: () => {
+							if (!isRegion(sectionIndex)) {
+								const {end: start} = getPrevRegion(sectionIndex).region || {end: 0};
+								const {start: end} = getNextRegion(sectionIndex).region || {start: $duration};
+								if (start <= end - $minRegionDuration) {
+									updateSection(sectionIndex, { start, end });
+								}
+							}
+						} },
 					], },
-					{ name: 'Delete', divider: true, callback: () => deleteSection(index)},
+					{ name: 'Delete', divider: true, callback: () => deleteSection(sectionIndex)},
 				]);
 			},
 		},
-		background: {
+		container: {
 			click: event => {
+				if (event.target !== container) return;
 				$activeIndex = undefined;
 			}, 
 			contextMenu: event => {
@@ -419,22 +411,19 @@
 			}
 		}
 	};
+
 </script>
 
-<div class="container"
-	bind:this={container}
-	bind:offsetWidth={containerWidth} 
-    use:highlightable={{text: text, sections: sections, containerWidth: containerWidth, fontSize: fontSize}}
-	on:section-click={on.section.click}
-	on:word-click={on.word.click}
-	on:word-hold={on.word.hold}
-	on:section-hold={on.section.hold}
-	on:section-changed={on.section.change}
-	on:click|self={on.background.click}
-	on:contextmenu={on.background.contextMenu}
-/>
-<style>
-	.container {
-		height: 100%;
-	}
-</style>
+{#each transcription as section, sectionIndex}
+<Section highlight={isRegion(section)} {fontSize}
+	text={section.text} {containerWidth} 
+	bind:wordElements={wordElementsBySection[sectionIndex]} 
+	resizable={sectionIndex === $activeIndex} {sectionIndex} {container}
+	on:resize={resize(sectionIndex)}
+	on:section-click={on.section.click(sectionIndex)}
+	on:section-hold={on.section.hold(sectionIndex)}
+	on:word-click={on.word.click(sectionIndex)}
+	on:word-hold={on.word.hold(sectionIndex)}
+/> 
+{/each}
+

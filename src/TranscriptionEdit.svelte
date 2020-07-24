@@ -6,7 +6,6 @@
 	import EditSectionInfo from './EditSectionInfo';
 	import { countWords, removeWhitespaces, isFloat, toFixed } from './utils';
 	// import { highlightable } from './highlightable';
-	import Highlightable from './Highlightable';
 	import Section from './Section';
 
 	const log = console.log;
@@ -45,42 +44,17 @@
 		const onContainerWidthChange = width => containerWidth = width;
 		resizableOn('container-width-change', onContainerWidthChange);
 
-		container.addEventListener('click', on.container.click);
-		container.addEventListener('contextmenu', on.container.contextMenu);
+		const containerIteraction = interact(container).on('tap', on.container.click).on('hold', on.container.contextMenu);
 
-		// log({wordElementsBySection});
+		container.addEventListener('contextmenu', on.container.contextMenu);
 
 		return () => {
 			container.style.position = oldPositioning;
 			resizableOff('container-width-change', onContainerWidthChange);
-			container.removeEventListener('click', on.container.click);
+			container && containerIteraction.unset();
 			container.removeEventListener('contextmenu', on.container.contextMenu);
 		}
 	});
-
-	// $: text = transformTransctiption(transcription);
-
-	// const transformTransctiption = () => {
-	// 	let offset = 0, text = '';
-	// 	transcription && transcription.forEach((section, index) => {
-	// 		text += section.text;
-	// 		const length = section.text.split(' ').length;
-	// 		if (isRegion(section)) {
-	// 			Object.assign(section, {
-	// 				offset: offset,
-	// 				length: length,
-	// 				color: getColor(index, transcription),
-	// 			});
-	// 		} else {
-	// 			Object.assign(section, {
-	// 				offset: offset,
-	// 				length: 0,
-	// 			});
-	// 		}
-	// 		offset += length;
-	// 	});
-	// 	return text;
-	// };
 
 	$: log({wordElementsBySection});
 	let wordElementsBySection = [];
@@ -300,9 +274,10 @@
 					on.section.hold(sectionIndex)({detail: {event}});
 				}
 			},
-			hold: sectionIndex => ({detail: {event}}) => {
-				console.log('onSectionHold', sectionIndex);
-
+			hold: sectionIndex => async ({detail: {event}}) => {
+				$playing = false;
+				await tick();
+				$activeIndex = sectionIndex;
 				openContextMenu(
 					{
 						pageX: event.x,
@@ -333,61 +308,48 @@
 		},
 		word: {
 			click: sectionIndex => ({detail: {event, wordIndex}}) => {
-				console.log('onWordClick', event);
 				$activeIndex = undefined;
 				if (event.button === 2) {
 					on.word.hold(sectionIndex)({detail: {event, wordIndex}});
 				}
 			},
 			hold: sectionIndex => ({detail: {wordIndex, event}}) => {
-				console.log('on word hold')
+				if (typeof wordIndex !== 'number') {
+					throw new Error('implementation error');
+				}
+				if (isRegion(sectionIndex)) {
+					throw new Error('implementation error');
+				}
 				const {end: start} = getPrevRegion(sectionIndex).region || {end: 0};
 				const {start: end} = getNextRegion(sectionIndex).region || {start: $duration};
 
 				const canCreateRegion = start <= end - $minRegionDuration;
+				const disabledMessage = 'Please resize neighbouring regions on the waveform.';
 
 				openContextMenu({
 					pageX: event.x,
 					pageY: event.y,
 				}, [
 					{ name: 'Edit', callback: () => startEditingSection(sectionIndex), },
-					{ name: 'Create region', submenu: [
-						{ name: 'Word', disabled: !canCreateRegion, callback: () => {
-							if (!isRegion(sectionIndex)) {
-								if (typeof wordIndex !== 'number') {
-									throw new Error('implementation error')									;
-								}
-								const {end: start} = getPrevRegion(sectionIndex).region || {end: 0};
-								const {start: end} = getNextRegion(sectionIndex).region || {start: $duration};
-								if (start <= end - $minRegionDuration) {
-									const t = transcription.flat();
-									
-									const wordsInSection = t[sectionIndex].text.split(' ');
-									const leftText = wordsInSection.slice(0, wordIndex).join(' ');
-									const rightText = wordsInSection.slice(wordIndex + 1).join(' ');
-									updateSection(sectionIndex, { start, end, text: wordsInSection[wordIndex] }, t);
-	
-									if (rightText) {
-										insertSection(sectionIndex + 1, { text: rightText }, t, false);
-									}
-	
-									if (leftText) {
-										insertSection(sectionIndex, { text: leftText }, t, false);
-									}
-	
-									transcription = t;
-								}
+					{ name: 'Create region', disabled: canCreateRegion ? false : disabledMessage, submenu: [
+						{ name: 'Word', callback: () => {
+							const t = transcription.flat();
+							const wordsInSection = t[sectionIndex].text.split(' ');
+							const leftText = wordsInSection.slice(0, wordIndex).join(' ');
+							const rightText = wordsInSection.slice(wordIndex + 1).join(' ');
+							updateSection(sectionIndex, { start, end, text: wordsInSection[wordIndex] }, t, { color: true });
+
+							if (rightText) {
+								insertSection(sectionIndex + 1, { text: rightText }, t, false);
 							}
+
+							if (leftText) {
+								insertSection(sectionIndex, { text: leftText }, t, false);
+							}
+
+							transcription = t;
 						}, },
-						{ name: 'Section', disabled: true, callback: () => {
-							if (!isRegion(sectionIndex)) {
-								const {end: start} = getPrevRegion(sectionIndex).region || {end: 0};
-								const {start: end} = getNextRegion(sectionIndex).region || {start: $duration};
-								if (start <= end - $minRegionDuration) {
-									updateSection(sectionIndex, { start, end });
-								}
-							}
-						} },
+						{ name: 'Section', callback: () => updateSection(sectionIndex, { start, end }, transcription, { color: true }) },
 					], },
 					{ name: 'Delete', divider: true, callback: () => deleteSection(sectionIndex)},
 				]);
@@ -397,7 +359,7 @@
 			click: event => {
 				if (event.target !== container) return;
 				$activeIndex = undefined;
-			}, 
+			},
 			contextMenu: event => {
 				if (event.target !== container) return;
 
@@ -408,7 +370,7 @@
 				}, [
 					{ name: 'Insert Text', callback: () => insertText(transcription.length), },
 				]);
-			}
+			},
 		}
 	};
 
@@ -416,7 +378,7 @@
 
 {#each transcription as section, sectionIndex}
 <Section highlight={isRegion(section)} {fontSize}
-	text={section.text} {containerWidth} 
+	text={section.text} {containerWidth} color={section.color}
 	bind:wordElements={wordElementsBySection[sectionIndex]} 
 	resizable={sectionIndex === $activeIndex} {sectionIndex} {container}
 	on:resize={resize(sectionIndex)}
@@ -424,6 +386,6 @@
 	on:section-hold={on.section.hold(sectionIndex)}
 	on:word-click={on.word.click(sectionIndex)}
 	on:word-hold={on.word.hold(sectionIndex)}
-/> 
+/>
 {/each}
 

@@ -18,16 +18,16 @@
 		{ text: "And it looks like I'm the queen.", },// start: 24.23, end: 27.15 },
 		{ text: "The wind is howling like this swirling storm inside.", start: 28.86, end: 35 },
 		{ text: "Couldn't keep it in, Heaven knows I tried.", start: 35.65, end: 41.15 },
-		{ text: "Don't let them in, don't let them see.", start: 42.47, end: 45.98 },
+		{ text: "Don't let them in, don't let them see.", },// start: 42.47, end: 45.98 },
 		{ text: "Be the good girl you always have to be.", start: 45.98, end: 49.41 },
 		{ text: "Conceal, don't feel, don't let them", },// start: 49.41, end: 52.65 },
 		{ text: "know", start: 52.65, end: 55.89 },
 		{ text: "Well, now they know.", start: 55.89, end: 59.22 },
-		{ text: "Let it go, let it go.", start: 59.22, end: 62.76 },
+		{ text: "Let it go, let it go.", },// start: 59.22, end: 62.76 },
 		{ text: "Can't hold it back anymore.", start: 62.76, end: 66.32 },
-		{ text: "Let it go, let it go.", start: 66.32, end: 69.73 },
+		{ text: "Let it go, let it go.", },// start: 66.32, end: 69.73 },
 		{ text: "Turn away and slam the door.", start: 69.73, end: 73.49 },
-		{ text: "I don't care.", start: 73.49, end: 76.26 },
+		{ text: "I don't care.", },// start: 73.49, end: 76.26 },
 		{ text: "what they're going to say.", start: 76.26, end: 79.83 },
 		{ text: "Let the storm rage on.", start: 80.4, end: 84.43,  },
 		{ text: "The cold never bothered me anyway.", },// start: 84.43, end: 87.26,  },
@@ -203,7 +203,7 @@
 		return nextRegion ? nextRegion.end - $minRegionDuration : $duration;
 	};
 
-	const updateSection = (index, {text, start, end}, fix = false, t = transcriptionData) => {
+	const updateSection = (index, {text, start, end, color}, t = transcriptionData, fix = false) => {
 		if (t[index] === undefined) return false;
 
 		if (text !== undefined) t[index].text = fixSectionText(text);
@@ -225,11 +225,11 @@
 				if (nextRegion && end > nextRegion.start) {
 					nextRegion.start = end;
 				}
-			} else if (fix) {
+			} else if (fix && fix.times) {
 				return updateSection(index, {
 					start: validateStart(start) ? start : (prevRegion ? prevRegion.start + $minRegionDuration : 0),
 					end: validateEnd(end) ? end : (nextRegion ? nextRegion.end - $minRegionDuration : $duration),
-				}, false, t);
+				}, t, Object.assign(fix, { times: false }));
 			} else {
 				return {
 					success: false,
@@ -238,7 +238,17 @@
 			}
 		}
 
-		if (t === transcriptionData) {
+		if (color !== undefined && colors.includes(color)) {
+			t[index].color = color;
+		}
+
+		if (isRegion(index, t) && fix && fix.color === true) {
+			if (!colors.includes(t[index].color)) {
+				t[index].color = getColor(index, t);
+			}
+		}
+
+		if (t === transcriptionData && (!fix || fix.skipAssigment !== true)) {
 			transcriptionData = t;
 		}
 
@@ -263,7 +273,7 @@
 		if (isRegion(section)) {
 			console.log('section is region')
 			t.splice(index, 0, {});
-			if (!updateSection(index, section, t).success) {
+			if (!updateSection(index, section, t, { color: true }).success) {
 				throw new Error('can\'t insert section', section, index, t);
 				t.splice(index, 1);
 				if (t === transcriptionData) {
@@ -309,20 +319,18 @@
 		return tmp;
 	};
 
+	const colors = ['red', 'green', 'blue', 'orangered'];
 	const getColor = (index, t = transcriptionData) => {
-		if (t && t[index]) {
-			const colors = ['red', 'green', 'blue', 'orangered'];
-			if (isRegion(index, t)) {
-				const possibleColors = colors.filter(color => {
-					const prevRegion = getPrevRegion(index, t);
-					const nextRegion = getNextRegion(index, t);
-					const prevColor = prevRegion ? prevRegion.color : undefined;
-					const nextColor = nextRegion ? nextRegion.color : undefined;
-					return color !== prevColor && color !== nextColor;
-				});
-	
-				return possibleColors[Math.floor(Math.random() * possibleColors.length)];
-			}
+		if (t && t[index] && isRegion(index, t)) {
+			const possibleColors = colors.filter(color => {
+				const { region: prevRegion } = getPrevRegion(index, t);
+				const { region: nextRegion } = getNextRegion(index, t);
+				const prevColor = prevRegion ? prevRegion.color : undefined;
+				const nextColor = nextRegion ? nextRegion.color : undefined;
+				return color !== prevColor && color !== nextColor;
+			});
+
+			return possibleColors[Math.floor(Math.random() * possibleColors.length)];
 		}
 	};
 
@@ -372,6 +380,19 @@
 			]},
 		]);
 	};
+
+	const initialTranscriptionValidation = (t) => {
+		if (t instanceof Array) {
+			t.forEach((_, index) => {
+				updateSection(index, {}, t, { color: true });
+			});
+			return t;
+		} else {
+			throw new Error('implementation error');
+		}
+	};
+
+	transcriptionData = initialTranscriptionValidation(transcriptionData);
 
 </script>
 

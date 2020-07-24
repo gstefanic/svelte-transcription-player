@@ -162,12 +162,14 @@
         left: 0;
         border-top-left-radius: 4px;
         border-bottom-left-radius: 4px;
+        background: linear-gradient(to right, var(--handle-color) 4px, transparent 4px);
     }
 
     .handle-right {
         right: 0;
         border-top-right-radius: 4px;
         border-bottom-right-radius: 4px;
+        background: linear-gradient(to left, var(--handle-color) 4px, transparent 4px);
     }
 
     .times-container {
@@ -185,14 +187,13 @@
     on:tap={on.region.tap}
     class:resizing
     class:active={index === $activeIndex}
-    style="--offset-left:{offsetLeft}px; --region-width:{width}px; --region-color:{Color(color).lighten(0.5).fade(0.5).string()}">
+    style="--offset-left:{offsetLeft}px; --region-width:{width}px; --region-color:{Color(color).lighten(0.5).fade(0.5).string()}; --handle-color: {color}">
 
-    <div class="handle handle-left" style="background-color: {color}">
+    <div class="handle handle-left">
         {#if resizable}
             <RegionHandle
                 on:resizing={on.start.resizing}
                 on:resized={on.region.resized}
-                {color}
             />
         {/if}
     </div>
@@ -211,12 +212,11 @@
     </div>
     {/if}
 
-    <div class="handle handle-right" style="background-color: {color}">
+    <div class="handle handle-right">
         {#if resizable}
             <RegionHandle
                 on:resizing={on.end.resizing} 
                 on:resized={on.region.resized}
-                {color}
             />
         {/if}
     </div>

@@ -2,15 +2,19 @@
     import { onMount, getContext, tick, createEventDispatcher } from 'svelte';
     import { Iterator, getOffsetPosition } from './utils';
     import interact from 'interactjs';
+    import { default as Color } from 'color';
 
     export let text;
     export let highlight;
     export let resizable = true;
-    export let color = 'rgba(255,0,0,0.1)';
+    export let color = 'red';
     export let container;
     export let containerWidth;
     export let sectionIndex;
     export let fontSize;
+
+    $: sectionColor = Color(color).lighten(0.5).fade(0.5).string();
+    $: handleColor = Color(color).fade(0.75).string();
 
     const dispatch = createEventDispatcher();
 
@@ -51,15 +55,9 @@
         return parts;
     };
 
-    // let words = [], parts = [];
-
     $: words = text.split(' ');
-    // $: tick().then(() => words = text.split(' '));
 
     $: parts = getParts(wordElements, containerWidth, fontSize);
-    // $: tick().then(() => parts = getParts(wordElements, containerWidth));
-
-    // $: log({wordElements});
 
     let targets, targetsByRows, handleSide, X0, Y0, snapElement, originWordElement, resetHandleDown;
 
@@ -276,7 +274,7 @@
 {#if highlight}
 {#each parts as {top, left, height, width}, partIndex}
 <div class="part" bind:this={partElements[partIndex]} 
-    style="--top: {top}px; --left: {left}px; --height: {height}px; --width: {width}px; --bg-color: {color};" 
+    style="--top: {top}px; --left: {left}px; --height: {height}px; --width: {width}px; --section-color: {sectionColor}; --handle-color: {handleColor};" 
     use:interactable
     on:tap={forward('section-click')}
     on:hold={forward('section-hold')}>
@@ -285,7 +283,7 @@
         style="--left: {leftHandle.left}px; --top: {leftHandle.top}px;" 
         on:mousedown={handleDown(sectionIndex, 'left')}
         on:touchstart={handleDown(sectionIndex, 'left')}>
-        <div style="background: red; position: absolute; left: 0; top: 0; height: 100%; width: 4px;"></div>
+        <div class="handle" style="position: absolute; left: 0; top: 0; height: 100%; width: 4px;"></div>
     </div>    
     {/if}
 
@@ -294,7 +292,7 @@
         style="--left: {rightHandle.left}px; --top: {rightHandle.top}px; --right: {rightHandle.right}px" 
         on:mousedown={handleDown(sectionIndex, 'right')}
         on:touchstart={handleDown(sectionIndex, 'right')}>
-        <div style="background: red; position: absolute; right: 0; top: 0; height: 100%; width: 4px;"></div>
+        <div class="handle" style="position: absolute; right: 0; top: 0; height: 100%; width: 4px;"></div>
     </div>
     {/if}
 </div>
@@ -312,7 +310,8 @@
         left: var(--left);
         height: var(--height);
         width: var(--width);
-        background-color: var(--bg-color);
+        background-color: var(--section-color);
+        border-radius: 0.25rem;
     }
 
     .handle-container {
@@ -321,6 +320,20 @@
         height: 100%;
         width: 10px;
         cursor: ew-resize;
+    }
+
+    .handle {
+        background-color: var(--handle-color);
+    }
+
+    .left > .handle {
+        border-top-left-radius: 0.25rem;
+        border-bottom-left-radius: 0.25rem;
+    }
+
+    .right > .handle {
+        border-top-right-radius: 0.25rem;
+        border-bottom-right-radius: 0.25rem;
     }
 
     .left {

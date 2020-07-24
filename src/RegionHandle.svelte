@@ -2,8 +2,6 @@
     import { createEventDispatcher } from 'svelte';
     import interact from 'interactjs';
 
-    export let color = 'green';
-
     const dispatch = createEventDispatcher();
 
     const eventListeners = node => {
@@ -22,11 +20,10 @@
 
 <style>
     .handle {
-        width: 4px;
+        width: 10px;
         height: 100%;
-        /* background-color: var(--handle-color); */
         background-color: transparent;
     }
 </style>
 
-<div class="handle" use:eventListeners style="--handle-color:{color}" />
+<div class="handle" use:eventListeners/>

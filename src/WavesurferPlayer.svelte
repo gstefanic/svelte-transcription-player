@@ -464,7 +464,7 @@
             wavesurferWidth={wavesurferWidth} 
             scrollLeft={scrollLeft}
             on:resized={regionResized(i)}
-            resizable={$activeIndex === i}
+            resizable={$activeIndex === i && (zoomPercent === 1 || (region.end - region.start) * curPxPerSec) > 30}
             on:please-rezoom={() => zoomOnRegion(i)}
         />
         {/if}

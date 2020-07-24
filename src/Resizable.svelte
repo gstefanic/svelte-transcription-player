@@ -37,7 +37,7 @@
     const isVisible = (offsetTop) => {
         const containerTop = container.scrollTop;
         const containerBottom = containerTop + container.offsetHeight;
-        console.log('isVisible', offsetTop, containerTop, containerBottom, containerTop <= offsetTop && offsetTop <= containerBottom);
+        // console.log('isVisible', offsetTop, containerTop, containerBottom, containerTop <= offsetTop && offsetTop <= containerBottom);
         return (containerTop <= offsetTop && offsetTop <= containerBottom);
     };
 

@@ -19,7 +19,7 @@ module.exports = {
 		mainFields: ['svelte', 'browser', 'module', 'main']
 	},
 	output: {
-		path: __dirname + (prod ? '/dist' : '/public'),
+		path: __dirname + ('/public'),
 		filename: 'index.js',
 		chunkFilename: '[name].[id].js',
 		libraryTarget: 'umd',

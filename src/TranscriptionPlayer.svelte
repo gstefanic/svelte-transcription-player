@@ -438,7 +438,7 @@
 				displayRegions={$editMode}
 			/>
 			<div style="display: flex; align-items: center; justify-content: flex-end; width: 100%;">
-				<button on:click={toggleEdit} style="margin: 0;">{$editMode ? 'view' : 'edit'}</button>
+				<button on:click={toggleEdit} style="margin: 0;">{$editMode ? 'View' : 'Edit'}</button>
 				<button on:click={() => console.log(transcriptionData)} style="margin: 0;">Print</button>
 				<span class="settings" bind:this={settingButton} on:click={onSettingClicked}></span>
 			</div>

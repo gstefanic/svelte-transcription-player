@@ -56,7 +56,17 @@
 		}
 	});
 
-	$: log({wordElementsBySection});
+	$: scrollToRegion($activeIndex);
+	const scrollToRegion = (sectionIndex) => {
+		if (isRegion(sectionIndex)) {
+			const wordElement = wordElementsBySection[sectionIndex][0];
+			const lastWordElement = wordElementsBySection[sectionIndex][wordElementsBySection[sectionIndex].length - 1];
+			if (wordElement && lastWordElement) {
+				shouldBeVisible({top: wordElement.offsetTop, bottom: lastWordElement.offsetTop + lastWordElement.offsetHeight});
+			}
+		}
+	};
+
 	let wordElementsBySection = [];
 
 	$: wordElements = wordElementsBySection.flat().filter(e => e instanceof HTMLElement);

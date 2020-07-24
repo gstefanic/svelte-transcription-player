@@ -320,6 +320,7 @@
         height: 100%;
         width: 10px;
         cursor: ew-resize;
+        touch-action: none;
     }
 
     .handle {

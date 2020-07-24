@@ -2,7 +2,7 @@
     // Version 0.4.1
     import { setContext as baseSetContext, onMount, onDestroy } from 'svelte';
     import { fade } from 'svelte/transition';
-    import { preventScrolling, isAncestorOfNode, disableDefaultContextMenu } from './utils';
+    import { disableScroll, enableScroll, disable, isAncestorOfNode, disableDefaultContextMenu } from './utils';
     import Menu from './Menu';
 
     export let key = 'simple-context-menu';
@@ -17,8 +17,6 @@
     let onClose = toVoid;
     let onOpened = toVoid;
     let onClosed = toVoid;
-
-    let enableScroll;
 
     export const open = (
         {pageX, pageY, closeOnAction = true, openDirection} = {},
@@ -35,7 +33,7 @@
         onClose = callback.onClose || toVoid;
         onOpened = callback.onOpened || toVoid;
         onClosed = callback.onClosed || toVoid;
-        enableScroll = preventScrolling();
+        disableScroll();
     };
 
     export const close = (callback = {}) => {
@@ -46,7 +44,7 @@
         _items = [];
         // closeSubmenu();
 
-        enableScroll = enableScroll && enableScroll();
+        enableScroll();
     };
 
     setContext(key, { open, close });

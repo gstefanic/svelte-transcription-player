@@ -151,22 +151,21 @@ export function removeWhitespaces(text) {
     return text.replace(/\s\s/g, "");
 };
 
-export function preventScrolling(node = window) {    
+const preventDefault = (e) => {
+    e.preventDefault();
+};
+
+const preventDefaultForScrollKeys = (e) => {
     // left: 37, up: 38, right: 39, down: 40,
     // spacebar: 32, pageup: 33, pagedown: 34, end: 35, home: 36
     var keys = {32: 1, 33: 1, 34: 1, 35: 1, 36: 1, 37: 1, 38: 1, 39: 1, 40: 1};
-    
-    function preventDefault(e) {
-        e.preventDefault();
+    if (keys[e.keyCode]) {
+        preventDefault(e);
+        return false;
     }
-    
-    function preventDefaultForScrollKeys(e) {
-        if (keys[e.keyCode]) {
-            preventDefault(e);
-            return false;
-        }
-    }
-    
+};
+
+export function disableScroll(node = window) {
     // modern Chrome requires { passive: false } when adding event
     var supportsPassive = false;
     try {
@@ -177,26 +176,29 @@ export function preventScrolling(node = window) {
     
     var wheelOpt = supportsPassive ? { passive: false } : false;
     var wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel';
-    
-    // call this to Disable
-    const disableScroll = () => {
-        node.addEventListener('DOMMouseScroll', preventDefault, false); // older FF
-        node.addEventListener(wheelEvent, preventDefault, wheelOpt); // modern desktop
-        node.addEventListener('touchmove', preventDefault, wheelOpt); // mobile
-        node.addEventListener('keydown', preventDefaultForScrollKeys, false);
-    };
-    
-    // call this to Enable
-    const enableScroll = () => {
-        node.removeEventListener('DOMMouseScroll', preventDefault, false);
-        node.removeEventListener(wheelEvent, preventDefault, wheelOpt); 
-        node.removeEventListener('touchmove', preventDefault, wheelOpt);
-        node.removeEventListener('keydown', preventDefaultForScrollKeys, false);
-    };
 
-    disableScroll();
+    node.addEventListener('DOMMouseScroll', preventDefault, false); // older FF
+    node.addEventListener(wheelEvent, preventDefault, wheelOpt); // modern desktop
+    node.addEventListener('touchmove', preventDefault, wheelOpt); // mobile
+    node.addEventListener('keydown', preventDefaultForScrollKeys, false);
+};
 
-    return enableScroll;
+export function enableScroll(node = window) {
+    // modern Chrome requires { passive: false } when adding event
+    var supportsPassive = false;
+    try {
+        node.addEventListener("test", null, Object.defineProperty({}, 'passive', {
+            get: function () { supportsPassive = true; } 
+        }));
+    } catch(e) {}
+    
+    var wheelOpt = supportsPassive ? { passive: false } : false;
+    var wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel';
+
+    node.removeEventListener('DOMMouseScroll', preventDefault, false);
+    node.removeEventListener(wheelEvent, preventDefault, wheelOpt); 
+    node.removeEventListener('touchmove', preventDefault, wheelOpt);
+    node.removeEventListener('keydown', preventDefaultForScrollKeys, false);
 };
 
 export function isAncestorOfNode(ancestor, node) {

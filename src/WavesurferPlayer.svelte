@@ -139,6 +139,7 @@
 
         wavesurfer.on('audioprocess', currentTime => $time = currentTime);
         wavesurfer.on('seek', progress => $time = progress * $duration);
+        wavesurfer.on('pause', () => $playing = false);
 
         /* Remove wavesurfer scrollbar */
         wavesurfer.container.querySelectorAll('wave').forEach(element => {

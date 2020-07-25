@@ -12,15 +12,15 @@
 	// export let transcription;
 
 	let transcriptionData = [
-		{ text: "The snow glows white on the mountain tonight.", },// start: 13.79, end: 17 },
+		{ text: "The snow glows white on the mountain tonight.", start: 13.79, end: 17 },
 		{ text: "Not a footprint to be seen.", start: 17.36, end: 20 },
 		{ text: "A kingdom of isolation.", start: 21.01, end: 23.94 },
-		{ text: "And it looks like I'm the queen.", },// start: 24.23, end: 27.15 },
+		{ text: "And it looks like I'm the queen.", start: 24.23, end: 27.15 },
 		{ text: "The wind is howling like this swirling storm inside.", start: 28.86, end: 35 },
 		{ text: "Couldn't keep it in, Heaven knows I tried.", start: 35.65, end: 41.15 },
-		{ text: "Don't let them in, don't let them see.", },// start: 42.47, end: 45.98 },
+		{ text: "Don't let them in, don't let them see.", start: 42.47, end: 45.98 },
 		{ text: "Be the good girl you always have to be.", start: 45.98, end: 49.41 },
-		{ text: "Conceal, don't feel, don't let them", },// start: 49.41, end: 52.65 },
+		{ text: "Conceal, don't feel, don't let them", start: 49.41, end: 52.65 },
 		{ text: "know", start: 52.65, end: 55.89 },
 		{ text: "Well, now they know.", start: 55.89, end: 59.22 },
 		{ text: "Let it go, let it go.", },// start: 59.22, end: 62.76 },
@@ -319,8 +319,9 @@
 		return tmp;
 	};
 
-	const colors = ['red', 'green', 'blue', 'orangered'];
+	const colors = ['red', 'blue', 'orangered'];
 	const getColor = (index, t = transcriptionData) => {
+		return 'blue';
 		if (t && t[index] && isRegion(index, t)) {
 			const possibleColors = colors.filter(color => {
 				const { region: prevRegion } = getPrevRegion(index, t);

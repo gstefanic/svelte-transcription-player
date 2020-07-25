@@ -74,7 +74,7 @@
             const {region: prevRegion} = getPrevRegion(index);
             const {region: nextRegion} = getNextRegion(index);
             const {end: start} = prevRegion || {end: 0};
-            const {start: end} = nextRegion || {start: 0};
+            const {start: end} = nextRegion || {start: $duration};
             return isCurrent(start, end, index, true);
         }
         return false;
@@ -147,12 +147,14 @@
 
 <style>
     .past {
-        --color-past: rgba(0,0,0,0.1);
+        /* --color-past: rgba(0,0,0,0.1); */
+        --color-past: aliceblue;
         background-color: var(--color-past);
     }
 
     .current {
-        --color-past: rgba(0,0,0,0.1);
+        /* --color-past: rgba(0,0,0,0.1); */
+        --color-past: aliceblue;
         --color-upcoming: transparent;
         background: linear-gradient(to right, var(--color-past) var(--progress), var(--color-upcoming) var(--progress));
     }
@@ -162,7 +164,8 @@
     }
 
     .line:hover {
-        --color-hover: rgba(0,0,0,0.15);
+        /* --color-hover: rgba(0,0,0,0.15); */
+        --color-hover: #e6f3ff;
         background-color: var(--color-hover);
         cursor: pointer;
     }
@@ -175,7 +178,7 @@
 
 <div bind:this={container} class="container" style="--progress:{currentLineProgress * 100}%">
     {#each prepare(transcription) as {start, end, text}, index (start, end)}
-    <span class="line" class:past={end <= $time} class:current={isCurrent(start, end, index, $time)} on:click={lineClick(index)}>
+    <span class="line" class:past={end < $time} class:current={isCurrent(start, end, index, $time)} on:click={lineClick(index)}>
         {text}
     </span>
     {/each}

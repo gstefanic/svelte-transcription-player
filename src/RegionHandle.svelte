@@ -11,7 +11,8 @@
                 end: event => dispatch('resized'),
             },
             cursorChecker: () => 'ew-resize',
-        }).on('hold', event => dispatch('hold'));
+        })
+        // ', event => dispatch('hold'));
 
         return () => intrct.unset();
     };

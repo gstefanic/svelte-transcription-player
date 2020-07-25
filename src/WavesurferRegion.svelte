@@ -57,7 +57,7 @@
 
             const intrct = interact(node)
             .on('tap', event => held = !held && emit('tap', event))
-            .on('hold', event => held = emit('hold', event) || true);
+            // .on('hold', event => held = emit('hold', event) || true);
     
             return () => intrct.unset();
         }

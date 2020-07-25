@@ -18,25 +18,64 @@
     export let regions;
     export let displayRegions = false;
     export let autoplay = true;
+    export let height = 80;
 
-    const { isRegion, getPrevRegion } = getContext(contextKey);
+    const states = {
+        OK: 'ok',
+        LOADING: 'loading',
+        ERROR: 'error',
+        EMPTY: 'empty',
+    };
+
+    let state = states.LOADING;
+
+    const setState = s => {
+        if (Object.keys(states).map(key => states[key]).includes(state)) {
+            if (s === states.OK) {
+                $duration = toFixed(wavesurfer.getDuration(), 2);
+                waveElement = wavesurferContainer.querySelector('wave');
+                if (!waveElement) {
+                    throw new Error('impl error');
+                }
+                onWaveElementScroll();
+                waveElement.addEventListener('scroll', onWaveElementScroll);
+                wavesurfer.params.interact = true;
+            } else {
+                $playing = false;
+                $duration = 0;
+                $time = 0;
+                waveElement && waveElement.removeEventListener('scroll', onWaveElementScroll);
+                waveElement = undefined;
+                scrollLeft = 0;
+                if (wavesurfer) {
+                    wavesurfer.params.interact = false;
+                }
+            }
+            state = s;
+            console.log('setState', s);
+        } else {
+            throw new Error('impl error');
+        }
+    };
+
+    const { isRegion, getPrevRegion, getNextRegion, updateSection } = getContext(contextKey);
 
     let wavesurferContainer;
     let waveElement;
     let wavesurferWidth;
     let wavesurfer;
-    let ready = false;
     let minPxPerSec, maxPxPerSec, curPxPerSec;
     let scrollLeft;
+    $: ready = state === states.OK;
 
     let zoomPercent;
 
     const visibility = {
         zoomPercent: {
-            shouldBeVisible: () => !(isNaN(zoomPercent) || zoomPercent === 0),
+            shouldBeVisible: () => state === states.OK && !(isNaN(zoomPercent) || zoomPercent === 0),
         },
         time: {
-            shouldBeVisible: () => timeChanging === true,
+            shouldBeVisible: () => state === states.OK && timeChanging === true,
         },
     };
 
@@ -81,13 +120,15 @@
                     wavesurfer.play(0);
                 } else if (isRegion($activeIndex)) {
                     // play region
-                    wavesurfer.play(regions[$activeIndex].start, regions[$activeIndex].end)
+                    wavesurfer.play(regions[$activeIndex].start, regions[$activeIndex].end);
+                    wavesurfer.once('pause', () => $playing = false);
                 } else {
                     const {region: prevRegion} = getPrevRegion(index);
                     const {region: nextRegion} = getNextRegion(index);
                     const {end: playFrom} = prevRegion || {end: 0};
                     const {start: playTo} = nextRegion || {start: 0};
                     wavesurfer.play(playFrom, playTo);
+                    wavesurfer.once('pause', () => $playing = false);
                 }
             } else {
                 wavesurfer && wavesurfer.pause();
@@ -95,19 +136,36 @@
         } else {
             play ? wavesurfer && wavesurfer.play() : wavesurfer && wavesurfer.pause();
         }
-    }
+    };
 
 
     /* Automatically load audio when wavesurfer is initialized or url is changed*/
-    $: {
+    $: onUrlChange(url);
+
+    const onUrlChange = () => {
+        console.log('onUrlChange', url);
         if (wavesurfer) {
-            setReady(false);
-            wavesurfer.once('ready', () => {
-                setReady(true);
-            });
-            wavesurfer.load(url);
+            if (url) {
+                let onReady;
+                wavesurfer.once('ready', onReady = () => {
+                    console.log('wavesurfer');
+                    setState(states.OK);
+                });
+                setState(states.LOADING);
+                try {
+                    console.log('try to load');
+                    wavesurfer.load(url);
+                    console.log('loaded');
+                } catch (error) {
+                    console.error('not loaded', error.message);
+                    wavesurfer.un('ready', onReady);
+                    setState(states.ERROR);
+                }
+            } else {
+                setState(states.EMPTY);
+            }
         } else {
-            setReady(false);
+            setState(states.LOADING);
         }
     };
 
@@ -115,10 +173,12 @@
         minPxPerSec = wavesurferWidth / $duration;
         curPxPerSec = minPxPerSec;
     };
+    
     $: maxPxPerSec = minPxPerSec * 20;
 
     /* Change width of wavesurfer on window resize */
-    $: wavesurferWidth && ready && zoom();
+    // $: wavesurferWidth && ready && zoom();
+    $: wavesurferWidth && state === states.OK && zoom();
 
     onMount(async () => {
 		wavesurfer = WaveSurfer.create({
@@ -130,21 +190,24 @@
             backend: 'MediaElement',
             waveColor: '#D9DCFF',
             progressColor: '#4353FF',
-            cursorColor: '#4353FF',
+            cursorColor: 'transparent',
             barWidth: 3,
             barRadius: 3,
             cursorWidth: 1,
             barGap: 3,
+            hideScrollbar: true,
+            autoCenter: false,
+            interact: false,
         });
 
         wavesurfer.on('audioprocess', currentTime => $time = currentTime);
         wavesurfer.on('seek', progress => $time = progress * $duration);
-        wavesurfer.on('pause', () => $playing = false);
+        // wavesurfer.on('pause', () => tick().then(() => $playing = false));
 
-        /* Remove wavesurfer scrollbar */
-        wavesurfer.container.querySelectorAll('wave').forEach(element => {
-            element.style.overflow = 'hidden';
-        });
+        // /* Remove wavesurfer scrollbar */
+        // wavesurfer.container.querySelectorAll('wave').forEach(element => {
+        //     element.style.overflow = 'hidden';
+        // });
 
         /* update `curPxPerSec` on every zoom */
         wavesurfer.on('zoom', async pxPerSec => {
@@ -164,6 +227,16 @@
                     return interacting ? 'grabbing' : 'grab'
                 }
                 return 'default';
+            },
+            startAxis: 'x',
+            lockAxis: 'x',
+            inertia: true,
+            inertia: {
+                resistance: 10,
+                minSpeed: 1,
+                endSpeed: 5,
+                allowResume: true,
+                smoothEndDuration: 0,
             }
         }).on('tap', event => {
             if (event.target === waveElement) {
@@ -185,6 +258,8 @@
             origin: 'self',
         });
 
+        onUrlChange();
+
         /* onDestroy */
         return () => {
             moveWaveform.unset();
@@ -194,25 +269,6 @@
     });
 
     const onWaveElementScroll = () => scrollLeft = waveElement ? waveElement.scrollLeft : 0;
-
-    const setReady = isReady => {
-        if (isReady) {
-            $duration = toFixed(wavesurfer.getDuration(), 2);
-            waveElement = wavesurferContainer.querySelector('wave');
-            onWaveElementScroll();
-            waveElement.addEventListener('scroll', onWaveElementScroll);
-            // console.log(wavesurferContainer.offsetWidth);
-            // console.log(wavesurfer);
-        } else {
-            $playing = false;
-            $duration = 0;
-            $time = 0;
-            waveElement && waveElement.removeEventListener('scroll', onWaveElementScroll);
-            waveElement = undefined;
-            scrollLeft = 0;
-        }
-        ready = isReady;
-    };
 
     const toggleInteraction = interact => {
         if (wavesurfer) {
@@ -274,69 +330,15 @@
         pageY: event.pageY,
     });
 
-    const getPreviousRegion = index => {
-        for (var i = index - 1; i >= 0; i--) {
-            if (regions[i] && regions[i].start !== undefined && regions[i].end !== undefined) {
-                return {
-                    index: i,
-                    region: regions[i],
-                }
-            }
-        }
-        return {
-            index: -1,
-            region: undefined,
-        };
-    };
-
-    const getNextRegion = index => {
-        for (var i = index + 1; i < regions.length; i++) {
-            if (regions[i] && regions[i].start !== undefined && regions[i].end !== undefined) {
-                return {
-                    index: i,
-                    region: regions[i],
-                }
-            }
-        }
-        return {
-            index: -1,
-            region: undefined,
-        };
-    };
-
     // $: console.log('regions changed', regions)
 
     const regionResized = index => async event => {
-        console.error('region updated index:', index, 'region', regions[index], 'event', event, regions);
+        // console.error('region updated index:', index, 'region', regions[index], 'event', event, regions);
         if (regions[index]) {
-            const start = regions[index].start;
-            const end = regions[index].end;
-
-            const {index: prevRegionIndex, region: prevRegion} = getPreviousRegion(index);
-            const {index: nextRegionIndex, region: nextRegion} = getNextRegion(index);
-            // console.error('new star and end', start, end, prevRegionIndex, nextRegionIndex);
-
-            if (prevRegionIndex !== -1 && start < prevRegion.end) {
-                if (prevRegion.start + $minRegionDuration > start) {
-                    regions[prevRegionIndex].end = regions[prevRegionIndex].start + $minRegionDuration;
-                    regions[index] = regions[prevRegionIndex].end;
-                    // console.error('fix start, moved too much')
-                } else {
-                    regions[prevRegionIndex].end = toFixed(start);
-                    // console.error('fix prev region end')
-                }
-            }
-
-            if (nextRegionIndex !== -1 && end > regions[nextRegionIndex].start) {
-                if (nextRegion.end - $minRegionDuration < end) {
-                    regions[nextRegionIndex].start = regions[nextRegionIndex].end - $minRegionDuration;
-                    regions[index].end = regions[nextRegionIndex].start;
-                    // console.error('fix end, moved to much')
-                } else {
-                    regions[nextRegionIndex].start = toFixed(end);
-                    // console.error('fix next region start')
-                }
-            }
+            updateSection(index, {
+                start: regions[index].start, 
+                end: regions[index].end 
+            }, undefined, { times: true, });
         }
         zoomOnRegion(index);
         await tick();
@@ -427,8 +429,10 @@
     };
 
     const onCursorClick = () => {
-        wavesurfer && seekEnabled && wavesurfer.seekTo(((scrollLeft + cursorLeft) / curPxPerSec) / $duration);
+        ready && wavesurfer && seekEnabled && wavesurfer.seekTo(((scrollLeft + cursorLeft) / curPxPerSec) / $duration);
     };
+
+    $: console.log('ready changed', ready);
 
     const seekToRegion = index => {
         if (!ready) return
@@ -446,7 +450,7 @@
 
 </script>
 
-<div class="container">
+<div class="container" style="--wavesurfer-height: {height}px;">
     <div class="playPauseButtonContainer">
         {#if $playing}
         <div class="playPauseButton paused" class:disabled={!playEnabled} on:click={togglePlaying} in:whooshBackground></div>
@@ -462,6 +466,12 @@
         on:mousemove={wavesurferMousemove}
         on:mouseleave={wavesurferMouseleave}
         on:wheel={wheelHandler} >
+
+        {#if state === states.EMPTY || state === states.ERROR}
+        <div class="error-message">
+            Couldn't load audio
+        </div>
+        {/if}
         
         {#each regions as region, i (region)}
         {#if (ready && displayRegions && region.start !== undefined && region.end !== undefined)}
@@ -476,13 +486,13 @@
             wavesurferWidth={wavesurferWidth} 
             scrollLeft={scrollLeft}
             on:resized={regionResized(i)}
-            resizable={$activeIndex === i && (zoomPercent === 1 || (region.end - region.start) * curPxPerSec) > 30}
+            resizable={$activeIndex === i && (zoomPercent >= 90 || (region.end - region.start) * curPxPerSec > 30)}
             on:please-rezoom={() => zoomOnRegion(i)}
         />
         {/if}
         {/each}
 
-        {#if visibility.zoomPercent.visible && !visibility.time.visible}
+        {#if visibility.zoomPercent.visible}
         <Blur css={'position: absolute; bottom: 0; right: 0; z-index: 100; font-size: 0.8rem; margin: 0 0.25rem 0.25rem 0; cursor: pointer;'} 
             transitionIn={whoosh} transitionOut={whoosh} on:click={zoom}>
             <span style="padding: 0.05rem 0.4rem;">{zoomPercent}%</span>
@@ -502,7 +512,7 @@
         {/if}
 
         <div class="cursor" 
-            hidden={cursorLeft === undefined || (false && seekEnabled !== true)} 
+            hidden={cursorLeft === undefined || (seekEnabled !== true) || state !== states.OK} 
             bind:this={cursor} 
             style="--cursor-left:{cursorLeft}px; --translate-x:{calcTranslateX(cursorLeft, cursorWidth, wavesurferWidth)}%;" 
             on:click={onCursorClick}>
@@ -526,25 +536,29 @@
     }
     .container {
         position: relative;
-        --wavesurfer-height:50px;
         display: flex;
         align-items: stretch;
         justify-content: left;
         height: var(--wavesurfer-height);
-        /* touch-action: none;
-        -ms-touch-action: none; */
         -webkit-touch-callout: none;
         -webkit-user-select: none;
         -khtml-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
+
+        background-color: aliceblue;
+        border-radius: 0.5rem;
+        /* margin-left: 8px; */
     }
 
     .wavesurfer {
         flex: 1 0 200px;
         overflow: hidden;
         position: relative;
+        background-color: aliceblue;
+        border-radius: 0.5rem;
+        /* margin-left: 8px; */
     }
 
     .interactable {
@@ -553,26 +567,32 @@
     }
 
     .playPauseButtonContainer {
-        flex: 0 0 50px;
+        flex: 0 0 var(--wavesurfer-height);
         position: relative;
     }
     .playPauseButton {
-        background-image: url('./images/play_arrow-black-18dp.svg');
+        background-image: url('./images/play_arrow-24px.svg');
         background-repeat: no-repeat;
         background-position: center;
         background-size: 80% 80%;
-        background-color: lightgray;
-        border-radius: 0.5rem;
+        /* background-color: lightgray; */
+        background-color: transparent;
+        border: solid 2px #D9DCFF;
+        fill: #D9DCFF;
+        box-sizing: border-box;
+        /* border-radius: 0.5rem; */
+        border-radius: 50%;
         cursor: pointer;
         position: absolute;
         top: 0;
         left : 0;
-        height: 100%;
-        width: 100%;
+        height: 80%;
+        width: 80%;
+        margin: 10%;
     }
 
     .paused {
-        background-image: url('./images/pause-black-18dp.svg');
+        background-image: url('./images/pause-24px.svg');
     }
 
     .disabled {
@@ -580,4 +600,14 @@
 		-webkit-filter: blur(1px);
         cursor: default;
     }
+
+    .error-message {
+        position: absolute; 
+        top: 50%; 
+        left: 50%; 
+        background: transparent; 
+        z-index: 9999; display: inline-block;
+        transform: translate(-50%, -50%);
+    }
+
 </style>

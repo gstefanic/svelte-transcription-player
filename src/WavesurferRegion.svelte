@@ -21,6 +21,7 @@
     $: maxStart = end - $minRegionDuration;
     $: minEnd = start + $minRegionDuration;
     $: handleColor = Color(color).lighten(0.75).fade(0.75).string();
+    $: regionColor = getRegionColor(color, $activeIndex);
 
     let resizing, draggingHandle;
 
@@ -128,6 +129,14 @@
         },
     };
 
+    const getRegionColor = (color) => {
+        if ($activeIndex === index) {
+            return Color(color).lighten(0.35).fade(0.40).string();
+        } else {
+            return Color(color).lighten(0.5).fade(0.5).string();
+        }
+    };
+
 </script>
 
 <style>
@@ -187,7 +196,7 @@
     on:tap={on.region.tap}
     class:resizing
     class:active={index === $activeIndex}
-    style="--offset-left:{offsetLeft}px; --region-width:{width}px; --region-color:{Color(color).lighten(0.5).fade(0.5).string()}; --handle-color: {color}">
+    style="--offset-left: {offsetLeft}px; --region-width: {width}px; --region-color: {regionColor}; --handle-color: {color}">
 
     <div class="handle handle-left">
         {#if resizable}

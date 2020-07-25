@@ -1,20 +1,36 @@
 <script>
     import { onMount, getContext, tick, createEventDispatcher } from 'svelte';
-    import { Iterator, getOffsetPosition } from './utils';
+    import { Iterator, getOffsetPosition, textMetrics } from './utils';
     import interact from 'interactjs';
     import { default as Color } from 'color';
+    import { activeIndex } from './store';
 
     export let text;
     export let highlight;
     export let resizable = true;
     export let color = 'red';
+    export let index;
     export let container;
     export let containerWidth;
     export let sectionIndex;
     export let fontSize;
+    export let lineHeight;
+    export let padding = 'normal';
 
-    $: sectionColor = Color(color).lighten(0.5).fade(0.5).string();
+    const getRegionColor = (color) => {
+        if ($activeIndex === index) {
+            return Color(color).lighten(0.35).fade(0.40).string();
+        } else {
+            return Color(color).lighten(0.5).fade(0.5).string();
+        }
+    };
+
+    $: sectionColor = getRegionColor(color, $activeIndex);
     $: handleColor = Color(color).fade(0.75).string();
+    $: fontSizeInPx = Math.min(
+        textMetrics('A', container, {'line-height': padding}, fontSize).height, 
+        textMetrics('A', container).height
+    );
 
     const dispatch = createEventDispatcher();
 
@@ -26,6 +42,10 @@
     onMount(async () => {});
 
     const { getTargets, getWordElements } = getContext('sections');
+
+    const getPartFromWordElement = wordElement => {
+
+    };
 
     const getParts = (wordElements) => {
         /**
@@ -57,7 +77,7 @@
 
     $: words = text.split(' ');
 
-    $: parts = getParts(wordElements, containerWidth, fontSize);
+    $: parts = getParts(wordElements, containerWidth, fontSize, lineHeight);
 
     let targets, targetsByRows, handleSide, X0, Y0, snapElement, originWordElement, resetHandleDown;
 
@@ -274,7 +294,7 @@
 {#if highlight}
 {#each parts as {top, left, height, width}, partIndex}
 <div class="part" bind:this={partElements[partIndex]} 
-    style="--top: {top}px; --left: {left}px; --height: {height}px; --width: {width}px; --section-color: {sectionColor}; --handle-color: {handleColor};" 
+    style="--top: {top}px; --left: {left}px; --height: {height}px; --width: {width}px; --section-color: {sectionColor}; --handle-color: {handleColor}; --inner-part-height: {fontSizeInPx}px;" 
     use:interactable
     on:tap={forward('section-click')}
     on:hold={forward('section-hold')}>
@@ -295,6 +315,7 @@
         <div class="handle" style="position: absolute; right: 0; top: 0; height: 100%; width: 4px;"></div>
     </div>
     {/if}
+    <div class="part-inner"></div>
 </div>
 {/each}
 {/if}
@@ -310,17 +331,33 @@
         left: var(--left);
         height: var(--height);
         width: var(--width);
+        background-color: transparent;
+        border-radius: 0.25rem;
+    }
+
+    .part-inner {
+        position: absolute;
         background-color: var(--section-color);
         border-radius: 0.25rem;
+        left: 0;
+        z-index: -1;
+        width: 100%;
+        top: 50%;
+        height: var(--inner-part-height);
+        transform: translateY(-50%);
     }
 
     .handle-container {
         position: absolute;
         background-color: transparent;
-        height: 100%;
+        /* height: 100%; */
         width: 10px;
         cursor: ew-resize;
         touch-action: none;
+
+        top: 50%;
+        height: var(--inner-part-height);
+        transform: translateY(-50%);
     }
 
     .handle {
@@ -339,12 +376,12 @@
 
     .left {
         left: var(--left);
-        top: var(--top);
+        top: calc(50% + var(--top));
     }
 
     .right {
         right: var(--right);
         left: var(--left);
-        top: var(--top);
+        top: calc(50% + var(--top));
     }
 </style>

@@ -178,7 +178,7 @@
 
 <div bind:this={container} class="container" style="--progress:{currentLineProgress * 100}%">
     {#each prepare(transcription) as {start, end, text}, index (start, end)}
-    <span class="line" class:past={end < $time} class:current={isCurrent(start, end, index, $time)} on:click={lineClick(index)}>
+    <span class="line" class:past={start <= $time && end <= $time} class:current={isCurrent(start, end, index, $time)} on:click={lineClick(index)}>
         {text}
     </span>
     {/each}

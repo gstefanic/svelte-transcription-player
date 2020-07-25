@@ -390,7 +390,7 @@
 </script>
 
 {#each transcription as section, sectionIndex}
-<Section highlight={isRegion(section)} {fontSize}
+<Section highlight={isRegion(section)} {fontSize} index={sectionIndex}
 	text={section.text} {containerWidth} color={section.color}
 	bind:wordElements={wordElementsBySection[sectionIndex]} 
 	resizable={sectionIndex === $activeIndex} {sectionIndex} {container}

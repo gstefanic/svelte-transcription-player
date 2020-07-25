@@ -104,7 +104,7 @@ export function removeAllChildren(node) {
  * @param {String} string 
  * @param {HTMLElement} container 
  */
-export function textMetrics(string, container) {
+export function textMetrics(string, container, props = {}) {
     var h = 0, w = 0;
     var div = document.createElement('div');
     if (container && container.appendChild) {
@@ -130,6 +130,10 @@ export function textMetrics(string, container) {
             div.style[styleProperty] = document.body.style[styleProperty];
         }
     });
+
+    for (const prop in props) {
+        div.style[prop] = props[prop];
+    }
     
     w = div.clientWidth;
     h = div.clientHeight;

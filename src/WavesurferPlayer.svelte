@@ -9,6 +9,7 @@
     import { coordinatesInElement, coordinatesOnPage, toFixed, formatTime, whoosh, whooshBackground } from './utils';
     import interact from 'interactjs';
     import touchable from './interactable';
+    import { default as Color } from 'color';
 
     export let url;
     export let zoomEnabled = false;
@@ -116,15 +117,15 @@
     const setPlaying = play => {
         if ($editMode) {
             if (play) {
-                if ($activeIndex === undefined) {
+                if ($activeIndex === undefined || $activeIndex === -1) {
                     wavesurfer.play(0);
                 } else if (isRegion($activeIndex)) {
                     // play region
                     wavesurfer.play(regions[$activeIndex].start, regions[$activeIndex].end);
                     wavesurfer.once('pause', () => $playing = false);
                 } else {
-                    const {region: prevRegion} = getPrevRegion(index);
-                    const {region: nextRegion} = getNextRegion(index);
+                    const {region: prevRegion} = getPrevRegion($activeIndex);
+                    const {region: nextRegion} = getNextRegion($activeIndex);
                     const {end: playFrom} = prevRegion || {end: 0};
                     const {start: playTo} = nextRegion || {start: 0};
                     wavesurfer.play(playFrom, playTo);

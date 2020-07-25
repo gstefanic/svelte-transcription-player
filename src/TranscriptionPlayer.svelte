@@ -411,6 +411,7 @@
 	.transcription-container {
 		height: 100%;
 		font-size: var(--font-size);
+		line-height: 1.5;
 	}
 
 	.settings {

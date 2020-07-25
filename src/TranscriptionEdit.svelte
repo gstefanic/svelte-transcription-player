@@ -58,7 +58,7 @@
 
 	$: scrollToRegion($activeIndex);
 	const scrollToRegion = (sectionIndex) => {
-		if (isRegion(sectionIndex)) {
+		if (sectionIndex < wordElementsBySection.length && isRegion(sectionIndex)) {
 			const wordElement = wordElementsBySection[sectionIndex][0];
 			const lastWordElement = wordElementsBySection[sectionIndex][wordElementsBySection[sectionIndex].length - 1];
 			if (wordElement && lastWordElement) {
@@ -244,10 +244,12 @@
 				close: closeModal,
 				remove: () => deleteSection(index),
 				done: (section) => {
+					console.log('updated');
+					const t = transcription.map(section => Object.assign({}, section));
 					const {text, start, end} = section;
 					if (validateText(text)) {
 						const trimmedText = removeWhitespaces(text);
-						transcription[index].text = trimmedText;
+						t[index].text = trimmedText;
 					}
 
 					if (isRegion(section)) {
@@ -255,15 +257,16 @@
 							updateSection(index, {
 								start: toFixed(start, 2),
 								end: toFixed(end, 2),
-							});
-							console.log('transcription updated', JSON.parse(JSON.stringify(transcription)))
+							}, t);
 							if (!wasRegion) {
 								$activeIndex = index;
 							}
 						}
 					} else {
-						removeRegion(index);
+						removeRegion(index, t);
 					}
+
+					transcription = t;
 
 				},
 			},

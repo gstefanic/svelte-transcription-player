@@ -1,6 +1,6 @@
 <script>
     import { onMount, beforeUpdate, getContext, tick } from 'svelte';
-    import { duration, time, activeIndex, playing } from './store';
+    import { duration, time, activeIndex, playing, contextKey } from './store';
     import { textMetrics } from './utils';
     import './limit';
     export let transcription;
@@ -17,6 +17,8 @@
     let autoscroll = true;
 
     const { getContainer, isVisible, shouldBeVisible } = getContext('resizable');
+
+    const { isRegion, getPrevRegion, getNextRegion } = getContext(contextKey);
 
     onMount(async () => {
         lines = container.getElementsByClassName('line');
@@ -62,10 +64,18 @@
 
     const prepare = transcription => transcription.map(extract);
 
-    const isCurrent = (start, end, index) => {
-        if (start <= $time && $time <= end) {
-            currentLineIndex = index;
-            return true;
+    const isCurrent = (start, end, index, check = false) => {
+        if (check || isRegion(index)) {
+            if (start <= $time && $time < end) {
+                currentLineIndex = index;
+                return true;
+            }
+        } else {
+            const {region: prevRegion} = getPrevRegion(index);
+            const {region: nextRegion} = getNextRegion(index);
+            const {end: start} = prevRegion || {end: 0};
+            const {start: end} = nextRegion || {start: 0};
+            return isCurrent(start, end, index, true);
         }
         return false;
     };
@@ -76,7 +86,13 @@
             if (isCurrent(start, end, index)) {
                 const duration = end - start;
                 const elapsed = $time - start;
-                currentLineProgress = elapsed / duration;
+                if (elapsed < 0) {
+                    throw new Error('impl error');
+                }
+                if (duration < 0) {
+                    throw new Error('impl error');
+                }
+                currentLineProgress = (elapsed < 0 || duration <= 0) ? 0 : elapsed / duration;
             } else {
                 currentLineProgress = 0;
             }
@@ -88,6 +104,7 @@
             autoscroll = true;
             if ($playing) {
                 $playing = false;
+                $activeIndex = index;
             } else {
                 $activeIndex = undefined;
                 $activeIndex = index;
@@ -158,7 +175,7 @@
 
 <div bind:this={container} class="container" style="--progress:{currentLineProgress * 100}%">
     {#each prepare(transcription) as {start, end, text}, index (start, end)}
-    <span class="line" class:past={end < $time} class:current={isCurrent(start, end, index, $time)} on:click={lineClick(index)}>
+    <span class="line" class:past={end <= $time} class:current={isCurrent(start, end, index, $time)} on:click={lineClick(index)}>
         {text}
     </span>
     {/each}

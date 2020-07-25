@@ -19,7 +19,7 @@
     export let displayRegions = false;
     export let autoplay = true;
 
-    const { isRegion } = getContext(contextKey);
+    const { isRegion, getPrevRegion } = getContext(contextKey);
 
     let wavesurferContainer;
     let waveElement;
@@ -77,11 +77,17 @@
     const setPlaying = play => {
         if ($editMode) {
             if (play) {
-                if (isRegion($activeIndex)) {
+                if ($activeIndex === undefined) {
+                    wavesurfer.play(0);
+                } else if (isRegion($activeIndex)) {
                     // play region
                     wavesurfer.play(regions[$activeIndex].start, regions[$activeIndex].end)
                 } else {
-                    wavesurfer.play(0);
+                    const {region: prevRegion} = getPrevRegion(index);
+                    const {region: nextRegion} = getNextRegion(index);
+                    const {end: playFrom} = prevRegion || {end: 0};
+                    const {start: playTo} = nextRegion || {start: 0};
+                    wavesurfer.play(playFrom, playTo);
                 }
             } else {
                 wavesurfer && wavesurfer.pause();
@@ -425,10 +431,15 @@
 
     const seekToRegion = index => {
         if (!ready) return
-        if (isRegion(index)) {
+        if (index === undefined) {
+            wavesurfer.seekTo(0);
+        } else if (isRegion(index)) {
             wavesurfer.seekTo(regions[index].start / $duration);
         } else {
-            wavesurfer.seekTo(0);
+            const {region: prevRegion} = getPrevRegion(index);
+            const {end: seekTime} = prevRegion || {end: 0};
+            wavesurfer.seekTo(seekTime / $duration);
+            console.log('active index not region', regions[$activeIndex], prevRegion);
         }
     };
 

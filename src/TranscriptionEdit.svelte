@@ -90,14 +90,12 @@
 	});
 
 	const resize = sectionIndex => ({detail: {side, diff}}) => {
-		// const {offset, length} = transcription[sectionIndex];
 		if (!isRegion(sectionIndex, transcription)) {
 			throw new Error('implementation error');
 		}
 		const t = transcription;
 		const sectionText = t[sectionIndex].text;
 		const sectionWords = sectionText.split(' ');
-		log('resize', {diff});
 		if (side === 'left') {
 			if (diff < 0) {
 				// trim start
@@ -131,7 +129,6 @@
 			}
 		} else if (side === 'right') {
 			if (diff < 0) {
-				log('extend end');
 				if (sectionIndex === transcription.length - 1) {
 					throw new Error('implementation error');
 				} else if (isRegion(sectionIndex + 1, transcription)) {
@@ -141,7 +138,6 @@
 					const nextSectionWords = nextSectionText.split(' ');
 					const inside = nextSectionWords.slice(0, -diff).join(' ');
 					const out = nextSectionWords.slice(-diff).join(' ');
-					log('extend end', {diff, nextSectionWords: nextSectionWords.length});
 					t[sectionIndex].text += ' ' + inside;
 					if (-diff === nextSectionWords.length) {
 						t.splice(sectionIndex + 1, 1);
@@ -152,7 +148,6 @@
 			} else if (diff > 0) {
 				const inside = sectionWords.slice(0, sectionWords.length - diff).join(' ');
 				const out = sectionWords.slice(-diff).join(' ');
-				log('trim end', {inside, out, diff});
 				t[sectionIndex].text = inside;
 				if (sectionIndex === transcription.length - 1 || isRegion(sectionIndex + 1, transcription)) {
 					t.splice(sectionIndex + 1, 0, { text: out});
@@ -164,7 +159,6 @@
 			throw new Error('invalid handle side');
 		}
 		transcription = t;
-		log({transcription});
 	};
 
 	const insertText = (index) => {
@@ -211,8 +205,6 @@
 
 					const {success} = await insertSection(index, section, transcription, true);
 
-					log('inserting success:', success);
-
 				},
 			},
 		);
@@ -244,7 +236,6 @@
 				close: closeModal,
 				remove: () => deleteSection(index),
 				done: (section) => {
-					console.log('updated');
 					const t = transcription.map(section => Object.assign({}, section));
 					const {text, start, end} = section;
 					if (validateText(text)) {

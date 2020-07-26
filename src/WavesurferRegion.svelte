@@ -70,7 +70,6 @@
     });
 
     const isValidStart = value => {
-        // console.log('isValidStart', value, min, maxStart);
         return min <= value && value <= maxStart
     };
     const isValidEnd = value => minEnd <= value && value <= max;
@@ -81,9 +80,7 @@
 
     const on = {
         region: {
-            hold: event => console.log('hold'),
             tap: async event => {
-                console.log('@region.tap', index, $activeIndex)
                 if ($activeIndex === index) {
                     $playing = !$playing;
                 } else {
@@ -101,7 +98,6 @@
             focus: () => resizing = true,
             input: () => rezoom(),
             blur: () => {
-                // console.log('WavesurserRegion#on:click', start, end);
                 on.region.resized()
             },
         },
@@ -192,7 +188,6 @@
 
 <div class="container" 
     use:touchable
-    on:hold={on.region.hold}
     on:tap={on.region.tap}
     class:resizing
     class:active={index === $activeIndex}

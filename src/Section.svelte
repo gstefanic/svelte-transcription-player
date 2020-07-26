@@ -82,8 +82,6 @@
     let targets, targetsByRows, handleSide, X0, Y0, snapElement, originWordElement, resetHandleDown;
 
     const handleDown = (sectionIndex, side) => event => {
-        log('event', event);
-
         const touchAction = container.style.touchAction;
         container.style.touchAction = 'none';
         const saved = {targets, targetsByRows, handleSide, X0, Y0, snapElement, originWordElement};
@@ -104,7 +102,7 @@
         handleSide = side;
         targets = getTargets(side, sectionIndex);
 
-        log('handleDown', {targets});
+        // log('handleDown', {targets});
 
         targetsByRows = targets.reduce( ([row, ...rest], target) => {
             if (!row) {
@@ -153,10 +151,10 @@
         }
 
         // split targets into rows
-        log(targets);
-        log('targetsByRows', targetsByRows);
-        log('rowIndex', rowIndex, Y0);
-        log({originWordElement});
+        // log(targets);
+        // log('targetsByRows', targetsByRows);
+        // log('rowIndex', rowIndex, Y0);
+        // log({originWordElement});
     };
 
     const handleMove = event => {
@@ -209,7 +207,6 @@
     };
 
     const handleUp = event => {
-        log('handleUp');
         if (targets && handleSide && snapElement) {
             const originWordIndex = targets.indexOf(originWordElement);
             const releaseWordIndex = targets.indexOf(snapElement);

@@ -8,7 +8,6 @@
     import { time, playing, duration, activeIndex, minRegionDuration, contextKey, editMode } from './store';
     import { coordinatesInElement, coordinatesOnPage, toFixed, formatTime, whoosh, whooshBackground } from './utils';
     import interact from 'interactjs';
-    import touchable from './interactable';
     import { default as Color } from 'color';
 
     export let url;
@@ -53,7 +52,6 @@
                 }
             }
             state = s;
-            console.log('setState', s);
         } else {
             throw new Error('impl error');
         }
@@ -144,21 +142,16 @@
     $: onUrlChange(url);
 
     const onUrlChange = () => {
-        console.log('onUrlChange', url);
         if (wavesurfer) {
             if (url) {
                 let onReady;
                 wavesurfer.once('ready', onReady = () => {
-                    console.log('wavesurfer');
                     setState(states.OK);
                 });
                 setState(states.LOADING);
                 try {
-                    console.log('try to load');
                     wavesurfer.load(url);
-                    console.log('loaded');
                 } catch (error) {
-                    console.error('not loaded', error.message);
                     wavesurfer.un('ready', onReady);
                     setState(states.ERROR);
                 }
@@ -331,8 +324,6 @@
         pageY: event.pageY,
     });
 
-    // $: console.log('regions changed', regions)
-
     const regionResized = index => async event => {
         // console.error('region updated index:', index, 'region', regions[index], 'event', event, regions);
         if (regions[index]) {
@@ -433,8 +424,6 @@
         ready && wavesurfer && seekEnabled && wavesurfer.seekTo(((scrollLeft + cursorLeft) / curPxPerSec) / $duration);
     };
 
-    $: console.log('ready changed', ready);
-
     const seekToRegion = index => {
         if (!ready) return
         if (index === undefined) {
@@ -445,7 +434,6 @@
             const {region: prevRegion} = getPrevRegion(index);
             const {end: seekTime} = prevRegion || {end: 0};
             wavesurfer.seekTo(seekTime / $duration);
-            console.log('active index not region', regions[$activeIndex], prevRegion);
         }
     };
 
@@ -513,7 +501,7 @@
         {/if}
 
         <div class="cursor" 
-            hidden={cursorLeft === undefined || (seekEnabled !== true) || state !== states.OK} 
+            hidden={cursorLeft === undefined || (false && seekEnabled !== true) || state !== states.OK} 
             bind:this={cursor} 
             style="--cursor-left:{cursorLeft}px; --translate-x:{calcTranslateX(cursorLeft, cursorWidth, wavesurferWidth)}%;" 
             on:click={onCursorClick}>

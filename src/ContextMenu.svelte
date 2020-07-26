@@ -23,7 +23,6 @@
         items = [],
         callback = {}
     ) => {
-        console.log('ContextMenu/open', pageX, pageX, items)
         _items = items,
         _pageX = pageX;
         _pageY = pageY;
@@ -61,7 +60,6 @@
     let windowW, windowH, menuW, menuH;
 
     const calcMenuDimentions = (pageX, pageY, windowH, windowW, menuH, menuW) => {
-        console.log('calcMenuDimentions', pageX, pageY, windowW, windowH)
         if (pageX === undefined || pageY === undefined) return;
         if (_openDirection === 'left') {
             return {

@@ -55,7 +55,6 @@ export function isFunction(fn) {
 };
 
 export function getCaretPosition(editableDiv) {
-    // console.log('getCaretPosition');
     var caretPos = 0,
     sel, range;
     if (window.getSelection) {
@@ -81,7 +80,6 @@ export function getCaretPosition(editableDiv) {
 };
 
 export function setCaretPosition(node, position) {
-    // console.log('setCaretPosition')
     let range = document.createRange();
     let sel = window.getSelection();
     if (node && node.childNodes && node.childNodes[0]) {
@@ -217,7 +215,6 @@ export function disableDefaultContextMenu(node) {
     let fn;
     if (node.addEventListener) {
         node.addEventListener('contextmenu', fn = function (e) {
-            console.log('@disableDefaultContextMenu', e.target);
             e.preventDefault();
         }, true);
         return () => node.removeEventListener('contextmenu', fn, true);

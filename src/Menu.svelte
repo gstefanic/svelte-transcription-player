@@ -26,7 +26,6 @@
     };
 
     const closeSubmenu = () => {
-        console.log('close submenu clicked');
         dispatch('close');
     };
 
@@ -34,7 +33,6 @@
         submenuIndex = undefined;
     };
 
-    $: console.log({items});
 
 </script>
 

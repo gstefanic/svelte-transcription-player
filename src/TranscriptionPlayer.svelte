@@ -1,13 +1,16 @@
 <script>
 	import { onMount, setContext, tick } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import WavesurferPlayer from './WavesurferPlayer';
 	import TranscriptionView from './TranscriptionView';
 	import TranscriptionEdit from './TranscriptionEdit';
 	import Resizable from './Resizable';
 	import SimpleModal from './SimpleModal';
 	import ContextMenu from './ContextMenu';
+	import Button from './Button';
 	import { isFloat, toFixed, countWords, removeWhitespaces, formatTime, coordinatesOnPage } from './utils';
 	import { contextKey, duration, minRegionDuration, editMode, activeIndex } from './store';
+
 	export let audio;
 	// export let transcription;
 
@@ -45,317 +48,278 @@
 
 	const changeFont = increase => () => fontSize = Math.min(2, Math.max(0.75, increase ? fontSize + 0.25 : fontSize - 0.25));
 
-	const isRegion = (i, t = transcriptionData) => {
-		if (typeof i === 'number') {
-			return isRegion(t[i]);
-		} else {
-			return i !== undefined && i.start !== undefined && i.end !== undefined && i.text !== undefined;
-		}
-	};
-
-	const getPrevRegion = (i, t = transcriptionData) => {
-		for (i; i > 0; i--) {
-			if (isRegion(i - 1, t)) {
-				return {
-					index: i - 1,
-					region: t[i - 1],
-				};
+	const _transcription = {
+		isRegion: (i, t = transcriptionData) => {
+			if (typeof i === 'number') {
+				return _transcription.isRegion(t[i]);
+			} else {
+				return i !== undefined && i.start !== undefined && i.end !== undefined && i.text !== undefined;
 			}
-		}
-		return {
-			index: -1,
-			region: undefined,
-		};
-	};
-
-	const getNextRegion = (i, t = transcriptionData) => {
-		for (i; i < t.length - 1; i++) {
-			if (isRegion(i + 1, t)) {
-				return {
-					index: i + 1,
-					region: t[i + 1],
-				};
-			}
-		}
-		return {
-			index: -1,
-			region: undefined,
-		};
-	};
-
-	const getRegions = (t = transcriptionData) => t.filter((_, i, arr) => isRegion(i, arr));
-
-	const getTranscription = (copy = false) => copy ? transcriptionData.map(r => Object.assign({}, r)) : transcriptionData;
-
-	const mapRegionIndexToIndex = (regionIndex, t = transcriptionData) => {
-		let regionsCounter = 0;
-		for (let i = 0; i < t.length; i++) {
-			if (isRegion(i, t) && --regionIndex === -1) {
-				return i;
-			}
-		}
-		return -1;
-	};
-
-	const mapIndexToRegionIndex = (index, t = transcriptionData) => {
-		if (isRegion(index, t)) {
-			let regionsCounter = -1;
-			for (let i = index; i >= 0; i--) {
-				if (isRegion(i, t)) {
-					regionsCounter++;
+		},
+		getPrevRegion: (i, t = transcriptionData) => {
+			for (i; i > 0; i--) {
+				if (_transcription.isRegion(i - 1, t)) {
+					return {
+						index: i - 1,
+						region: t[i - 1],
+					};
 				}
 			}
-			return regionsCounter;
-		} else {
+			return {
+				index: -1,
+				region: undefined,
+			};
+		},
+		getNextRegion: (i, t = transcriptionData) => {
+			for (i; i < t.length - 1; i++) {
+				if (_transcription.isRegion(i + 1, t)) {
+					return {
+						index: i + 1,
+						region: t[i + 1],
+					};
+				}
+			}
+			return {
+				index: -1,
+				region: undefined,
+			};
+		},
+		getRegions: (t = transcriptionData) => t.filter((_, i, arr) => _transcription.isRegion(i, arr)),
+		getTranscription: (copy = false) => copy ? transcriptionData.map(r => Object.assign({}, r)) : transcriptionData,
+		mapRegionIndexToIndex: (regionIndex, t = transcriptionData) => {
+			let regionsCounter = 0;
+			for (let i = 0; i < t.length; i++) {
+				if (_transcription.isRegion(i, t) && --regionIndex === -1) {
+					return i;
+				}
+			}
 			return -1;
-		}
-	};
-
-	const deleteSection = (index, t = transcriptionData) => {
-		const tmp = t.filter((_, i) => i !== index);
-		if (t === transcriptionData) {
-			transcriptionData = tmp;
-		}
-		return t;
-	};
-
-	const removeRegion = (index, t = transcriptionData) => {
-		if (t[index]) {
-			delete t[index].start
-			delete t[index].end
-			joinEmptySections(t);
+		},
+		mapIndexToRegionIndex: (index, t = transcriptionData) => {
+			if (isRegion(index, t)) {
+				let regionsCounter = -1;
+				for (let i = index; i >= 0; i--) {
+					if (_transcription.isRegion(i, t)) {
+						regionsCounter++;
+					}
+				}
+				return regionsCounter;
+			} else {
+				return -1;
+			}
+		},
+		deleteSection: (index, t = transcriptionData) => {
+			const tmp = t.filter((_, i) => i !== index);
 			if (t === transcriptionData) {
-				transcriptionData = t;
+				transcriptionData = tmp;
 			}
 			return t;
-		}
-	};
-
-	const startValidator = (index, t = transcriptionData) => {
-		const {region: prevRegion} = getPrevRegion(index, t);
-
-		const min = prevRegion ? prevRegion.start + $minRegionDuration : 0;
-
-		let max;
-
-		if (isRegion(index, t)) {
-			max = t[index].end - $minRegionDuration;
-		} else {
-			const {region: nextRegion} = getNextRegion(index, t);
-			max = nextRegion ? nextRegion.end - 2 * $minRegionDuration : $duration - $minRegionDuration;
-		}
-
-		return {
-			validator: value => isFloat(value, 2) && min <= value && value <= max,
-			min: min,
-			max: max,
-		};
-	};
-
-	const endValidator = (index, t = transcriptionData) => {
-		const {region: nextRegion} = getNextRegion(index, t);
-
-		const max = nextRegion ? nextRegion.end - $minRegionDuration : $duration;
-
-		let min;
-
-		if (isRegion(index, t)) {
-			min = t[index].start + $minRegionDuration;
-		} else {
-			const {region: prevRegion} = getPrevRegion(index, t);
-			min = prevRegion ? prevRegion.start + 2 * $minRegionDuration : $minRegionDuration;
-		}
-
-		return {
-			validator: value => isFloat(value, 2) && min <= value && value <= max,
-			min: min,
-			max: max,
-		};
-	};
-
-	const validateText = text => countWords(text) > 0;
-
-	const getMinStart = (index, t = transcriptionData) => {
-		const {region: prevRegion} = getPrevRegion(index, t);
-		return prevRegion ? prevRegion.start + $minRegionDuration : 0;
-	};
-
-	const getMaxStart = (index, t = transcriptionData) => {
-		if (isRegion(index, t)) {
-			return t[index].end - $minRegionDuration;
-		} else {
-			const {region: nextRegion} = getNextRegion(index, t);
-			return nextRegion ? nextRegion.end - $minRegionDuration : $duration;
-		}
-	};
-
-	const getMinEnd = (index, t = transcriptionData) => {
-		if (isRegion(index, t)) {
-			return t[index].start + $minRegionDuration;
-		} else {
-			const {region: prevRegion} = getPrevRegion(index, t);
-			return prevRegion ? prevRegion.start + $minRegionDuration : 0;
-		}
-	};
-
-	const getMaxEnd = (index, t = transcriptionData) => {
-		const {region: nextRegion} = getNextRegion(index, t);
-		return nextRegion ? nextRegion.end - $minRegionDuration : $duration;
-	};
-
-	const updateSection = (index, {text, start, end, color}, t = transcriptionData, fix = false) => {
-		if (t[index] === undefined) return false;
-
-		if (text !== undefined) t[index].text = fixSectionText(text);
-
-		if (start !== undefined && end !== undefined) {
-			const {index: prevRegionIndex, region: prevRegion} = getPrevRegion(index, t);
-			const {index: nextRegionIndex, region: nextRegion} = getNextRegion(index, t);
-	
-			const {min: minStart, max: maxStart, validator: validateStart} = startValidator(index, t);
-			const {min: minEnd, max: maxEnd, validator: validateEnd} = endValidator(index, t);
-	
-			if (validateStart(start) && validateEnd(end)) {
-				t[index].start = start;
-				if (prevRegion && start < prevRegion.end) {
-					t[prevRegionIndex].end = start;
-				}
-	
-				t[index].end = end;
-				if (nextRegion && end > nextRegion.start) {
-					nextRegion.start = end;
-				}
-			} else if (fix && fix.times) {
-				return updateSection(index, {
-					start: validateStart(start) ? start : (prevRegion ? prevRegion.start + $minRegionDuration : 0),
-					end: validateEnd(end) ? end : (nextRegion ? nextRegion.end - $minRegionDuration : $duration),
-				}, t, Object.assign(fix, { times: false }));
-			} else {
-				return {
-					success: false,
-					transcription: t,
-				}
-			}
-		}
-
-		if (color !== undefined && colors.includes(color)) {
-			t[index].color = color;
-		}
-
-		if (isRegion(index, t) && fix && fix.color === true) {
-			if (!colors.includes(t[index].color)) {
-				t[index].color = getColor(index, t);
-			}
-		}
-
-		if (t === transcriptionData && (!fix || fix.skipAssigment !== true)) {
-			transcriptionData = t;
-		}
-
-		return {
-			success: true,
-			transcription: t,
-		};
-	};
-
-	const insertSection = async (index, section, t = transcriptionData, optimization = false) => {
-		if (index < 0 || index > t.length) {
-			throw new Error('index out of bounds', index, section, t);
-			await tick();
-			return {
-				success: false,
-				transcription: t,
-			};
-		}
-
-		section.text = fixSectionText(section.text);
-
-		if (isRegion(section)) {
-			console.log('section is region')
-			t.splice(index, 0, {});
-			if (!updateSection(index, section, t, { color: true }).success) {
-				throw new Error('can\'t insert section', section, index, t);
-				t.splice(index, 1);
+		},
+		removeRegion: (index, t = transcriptionData) => {
+			if (t[index]) {
+				delete t[index].start
+				delete t[index].end
+				_transcription.joinEmptySections(t);
 				if (t === transcriptionData) {
 					transcriptionData = t;
 				}
+				return t;
+			}
+		},
+		startValidator: (index, t = transcriptionData) => {
+			const {region: prevRegion} = _transcription.getPrevRegion(index, t);
+
+			const min = prevRegion ? prevRegion.start + $minRegionDuration : 0;
+
+			let max;
+
+			if (_transcription.isRegion(index, t)) {
+				max = t[index].end - $minRegionDuration;
+			} else {
+				const {region: nextRegion} = _transcription.getNextRegion(index, t);
+				max = nextRegion ? nextRegion.end - 2 * $minRegionDuration : $duration - $minRegionDuration;
+			}
+
+			return {
+				validator: value => isFloat(value, 2) && min <= value && value <= max,
+				min: min,
+				max: max,
+			};
+		},
+		endValidator: (index, t = transcriptionData) => {
+			const {region: nextRegion} = _transcription.getNextRegion(index, t);
+
+			const max = nextRegion ? nextRegion.end - $minRegionDuration : $duration;
+
+			let min;
+
+			if (_transcription.isRegion(index, t)) {
+				min = t[index].start + $minRegionDuration;
+			} else {
+				const {region: prevRegion} = _transcription.getPrevRegion(index, t);
+				min = prevRegion ? prevRegion.start + 2 * $minRegionDuration : $minRegionDuration;
+			}
+
+			return {
+				validator: value => isFloat(value, 2) && min <= value && value <= max,
+				min: min,
+				max: max,
+			};
+		},
+		validateText: text => countWords(text) > 0,
+		getMinStart: (index, t = transcriptionData) => {
+			const {region: prevRegion} = _transcription.getPrevRegion(index, t);
+			return prevRegion ? prevRegion.start + $minRegionDuration : 0;
+		},
+		getMaxStart: (index, t = transcriptionData) => {
+			if (_transcription.isRegion(index, t)) {
+				return t[index].end - $minRegionDuration;
+			} else {
+				const {region: nextRegion} = _transcription.getNextRegion(index, t);
+				return nextRegion ? nextRegion.end - $minRegionDuration : $duration;
+			}
+		},
+		getMinEnd: (index, t = transcriptionData) => {
+			if (_transcription.isRegion(index, t)) {
+				return t[index].start + $minRegionDuration;
+			} else {
+				const {region: prevRegion} = _transcription.getPrevRegion(index, t);
+				return prevRegion ? prevRegion.start + $minRegionDuration : 0;
+			}
+		},
+		getMaxEnd: (index, t = transcriptionData) => {
+			const {region: nextRegion} = _transcription.getNextRegion(index, t);
+			return nextRegion ? nextRegion.end - $minRegionDuration : $duration;
+		},
+		updateSection: (index, {text, start, end, color}, t = transcriptionData, fix = false) => {
+			if (t[index] === undefined) return false;
+
+			if (text !== undefined) t[index].text = _transcription.fixSectionText(text);
+
+			if (start !== undefined && end !== undefined) {
+				const {index: prevRegionIndex, region: prevRegion} = _transcription.getPrevRegion(index, t);
+				const {index: nextRegionIndex, region: nextRegion} = _transcription.getNextRegion(index, t);
+		
+				const {min: minStart, max: maxStart, validator: validateStart} = _transcription.startValidator(index, t);
+				const {min: minEnd, max: maxEnd, validator: validateEnd} = _transcription.endValidator(index, t);
+		
+				if (validateStart(start) && validateEnd(end)) {
+					t[index].start = start;
+					if (prevRegion && start < prevRegion.end) {
+						t[prevRegionIndex].end = start;
+					}
+		
+					t[index].end = end;
+					if (nextRegion && end > nextRegion.start) {
+						nextRegion.start = end;
+					}
+				} else if (fix && fix.times) {
+					return _transcription.updateSection(index, {
+						start: validateStart(start) ? start : (prevRegion ? prevRegion.start + $minRegionDuration : 0),
+						end: validateEnd(end) ? end : (nextRegion ? nextRegion.end - $minRegionDuration : $duration),
+					}, t, Object.assign(fix, { times: false }));
+				} else {
+					return {
+						success: false,
+						transcription: t,
+					}
+				}
+			}
+
+			if (color !== undefined && _transcription.colors.includes(color)) {
+				t[index].color = color;
+			}
+
+			if (_transcription.isRegion(index, t) && fix && fix.color === true) {
+				if (!_transcription.colors.includes(t[index].color)) {
+					t[index].color = _transcription.getColor(index, t);
+				}
+			}
+
+			if (t === transcriptionData && (!fix || fix.skipAssigment !== true)) {
+				transcriptionData = t;
+			}
+
+			return {
+				success: true,
+				transcription: t,
+			};
+		},
+		insertSection: async (index, section, t = transcriptionData, optimization = false) => {
+			if (index < 0 || index > t.length) {
+				throw new Error('index out of bounds', index, section, t);
+				await tick();
 				return {
 					success: false,
 					transcription: t,
+				};
+			}
+
+			section.text = _transcription.fixSectionText(section.text);
+
+			if (_transcription.isRegion(section)) {
+				t.splice(index, 0, {});
+				if (!_transcription.updateSection(index, section, t, { color: true }).success) {
+					throw new Error('can\'t insert section', section, index, t);
+					t.splice(index, 1);
+					if (t === transcriptionData) {
+						transcriptionData = t;
+					}
+					return {
+						success: false,
+						transcription: t,
+					}
 				}
-			}
-		} else {
-			t.splice(index, 0, section);
-		}
-
-		if (optimization) {
-			t = joinEmptySections(t);
-		}
-
-		return {
-			success: true,
-			transcription: t,
-		};
-		
-	};
-
-	const fixSectionText = text => removeWhitespaces(text).trim();
-
-	const joinEmptySections = (t = transcriptionData) => {
-		const tmp = t.reduce(([head, ...tail], section) => {
-			section.text = fixSectionText(section.text);
-			if (!head) {
-				return [section];
-			} else if (isRegion(section) || isRegion(head)) {
-				return [section, head, ...tail];
 			} else {
-				head.text += ' ' + section.text;
-				return [head, ...tail];
+				t.splice(index, 0, section);
 			}
-		}, []).reverse();
-		if (t === transcriptionData) {
-			transcriptionData = tmp;
-		}
-		return tmp;
+
+			if (optimization) {
+				t = _transcription.joinEmptySections(t);
+			}
+
+			return {
+				success: true,
+				transcription: t,
+			};
+			
+		},
+		fixSectionText: text => removeWhitespaces(text).trim(),
+		joinEmptySections: (t = transcriptionData) => {
+			const tmp = t.reduce(([head, ...tail], section) => {
+				section.text = _transcription.fixSectionText(section.text);
+				if (!head) {
+					return [section];
+				} else if (_transcription.isRegion(section) || _transcription.isRegion(head)) {
+					return [section, head, ...tail];
+				} else {
+					head.text += ' ' + section.text;
+					return [head, ...tail];
+				}
+			}, []).reverse();
+			if (t === transcriptionData) {
+				transcriptionData = tmp;
+			}
+			return tmp;
+		},
+		getColor: (index, t = transcriptionData) => {
+			return 'blue';
+			if (t && t[index] && _transcription.isRegion(index, t)) {
+				const possibleColors = _transcription.colors.filter(color => {
+					const { region: prevRegion } = _transcription.getPrevRegion(index, t);
+					const { region: nextRegion } = _transcription.getNextRegion(index, t);
+					const prevColor = prevRegion ? prevRegion.color : undefined;
+					const nextColor = nextRegion ? nextRegion.color : undefined;
+					return color !== prevColor && color !== nextColor;
+				});
+
+				return possibleColors[Math.floor(Math.random() * possibleColors.length)];
+			}
+		},
+		colors: ['red', 'blue', 'orangered'],
 	};
 
-	const colors = ['red', 'blue', 'orangered'];
-	const getColor = (index, t = transcriptionData) => {
-		return 'blue';
-		if (t && t[index] && isRegion(index, t)) {
-			const possibleColors = colors.filter(color => {
-				const { region: prevRegion } = getPrevRegion(index, t);
-				const { region: nextRegion } = getNextRegion(index, t);
-				const prevColor = prevRegion ? prevRegion.color : undefined;
-				const nextColor = nextRegion ? nextRegion.color : undefined;
-				return color !== prevColor && color !== nextColor;
-			});
-
-			return possibleColors[Math.floor(Math.random() * possibleColors.length)];
-		}
-	};
-
-	setContext(contextKey, {
-		isRegion: isRegion,
-		getPrevRegion: getPrevRegion,
-		getNextRegion: getNextRegion,
-		getRegions: getRegions,
-		getTranscription: getTranscription,
-		mapRegionIndexToIndex: mapRegionIndexToIndex,
-		mapIndexToRegionIndex: mapIndexToRegionIndex,
-		deleteSection: deleteSection,
-		removeRegion: removeRegion,
-		startValidator: startValidator,
-		endValidator: endValidator,
-		validateText: validateText,
-		getMinStart: getMinStart,
-		getMaxStart: getMaxStart,
-		getMinEnd: getMinEnd,
-		getMaxEnd: getMaxEnd,
-		updateSection: updateSection,
-		insertSection: insertSection,
-		getColor: getColor
-	});
+	setContext(contextKey, _transcription);
 
 	let openContextMenu, closeContextMenu, settingButton, settingOpened;
 
@@ -385,12 +349,37 @@
 	const initialTranscriptionValidation = (t) => {
 		if (t instanceof Array) {
 			t.forEach((_, index) => {
-				updateSection(index, {}, t, { color: true });
+				_transcription.updateSection(index, {}, t, { color: true });
 			});
 			return t;
 		} else {
 			throw new Error('implementation error');
 		}
+	};
+
+	let savedState;
+	const saveState = () => {
+		savedState = _transcription.getTranscription(true);
+	};
+
+	const applySavedState = () => {
+		if (savedState) {
+			transcriptionData = savedState;
+		}
+	}
+
+	const startEditing = () => {
+		saveState();
+		$editMode = true;
+	};
+
+	const doneEditing = () => {
+		$editMode = false;
+	};
+
+	const cancelEditing = () => {
+		applySavedState();
+		$editMode = false;
 	};
 
 	transcriptionData = initialTranscriptionValidation(transcriptionData);
@@ -439,11 +428,20 @@
 				bind:autoplay
 				displayRegions={$editMode}
 			/>
-			<div style="display: flex; align-items: center; justify-content: flex-end; width: 100%;">
-				<button on:click={toggleEdit} style="margin: 0;">{$editMode ? 'View' : 'Edit'}</button>
-				<button on:click={() => console.log(transcriptionData)} style="margin: 0;">Print</button>
+			<div style="display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0.25rem 0;">
+				{#if $editMode}
+				<div style="display: flex;">
+					<Button onclick={doneEditing} height={'100%'} fontWeight={400} colors={{'default': '#4353FF'}}>Done</Button>
+					<Button onclick={cancelEditing} height={'100%'} fontWeight={400} css={'margin-left: 0.5rem;'} colors={{'default': '#ff3737'}}>Cancel</Button>
+				</div>
+				{:else}
+				<div style="display: flex;">
+					<Button onclick={startEditing} height={'100%'} fontWeight={400} colors={{'default': '#4353FF'}}>Edit</Button>
+				</div>
+				{/if}
 				<span class="settings" bind:this={settingButton} on:click={onSettingClicked}></span>
 			</div>
+
 			<div class="transcription-container">
 				<Resizable {autoscroll}>
 					{#if $editMode}
@@ -453,12 +451,6 @@
 					{/if}
 				</Resizable>
 			</div>
-			<!-- <label style="display: inline-block;"><input type=checkbox bind:checked={autoplay}> Autoplay</label>
-			<label style="display: inline-block;"><input type=checkbox bind:checked={autoscroll}> Autoscroll</label>
-			<button on:click={() => console.log(transcriptionData)}>{'print'}</button>
-			<span class="font-size decrease" on:click={changeFont(false)}></span>
-			<span class="font-size" on:click={changeFont(true)}></span> -->
-			<!-- <span class="settings" bind:this={settingButton} on:click={openSetting}></span> -->
 		</SimpleModal>
 	</ContextMenu>
 </div>

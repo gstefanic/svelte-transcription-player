@@ -23,6 +23,7 @@
     export let secondaryColor = '#D9DCFF';
     export let primaryColor = '#4353FF';
     export let backgroundColor = '#F0F8FF';
+    export let heightInPx;
     
 
     const states = {
@@ -465,6 +466,7 @@
         class:interactable={zoomEnabled || moveEnabled}
         bind:this={wavesurferContainer} 
         bind:clientWidth={wavesurferWidth}
+        bind:clientHeight={heightInPx}
         on:mousemove={wavesurferMousemove}
         on:mouseleave={wavesurferMouseleave}
         on:wheel={wheelHandler} >

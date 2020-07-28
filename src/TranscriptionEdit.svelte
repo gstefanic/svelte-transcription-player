@@ -342,7 +342,7 @@
 							const wordsInSection = t[sectionIndex].text.split(' ');
 							const leftText = wordsInSection.slice(0, wordIndex).join(' ');
 							const rightText = wordsInSection.slice(wordIndex + 1).join(' ');
-							updateSection(sectionIndex, { start, end, text: wordsInSection[wordIndex] }, t, { color: true });
+							updateSection(sectionIndex, { start, end, text: wordsInSection[wordIndex] }, t, { color: false });
 
 							if (rightText) {
 								insertSection(sectionIndex + 1, { text: rightText }, t, false);
@@ -354,7 +354,7 @@
 
 							transcription = t;
 						}, },
-						{ name: 'Section', callback: () => updateSection(sectionIndex, { start, end }, transcription, { color: true }) },
+						{ name: 'Section', callback: () => updateSection(sectionIndex, { start, end }, transcription, { color: false }) },
 					], },
 					{ name: 'Delete', divider: true, callback: () => deleteSection(sectionIndex)},
 				]);

@@ -19,7 +19,7 @@
 
 	export let audio;
 	export let onEdited; // is is falsey then editing is disabled
-	export let transcription;
+	// export let transcription;
 
 	$: canEdit = isFunction(onEdited);
 
@@ -57,11 +57,6 @@
 
 	$: _playerHeight = playerHeight in playerHeights ? playerHeights[playerHeight] : defaultPlayerSize;
 	export let playerHeight; // small, normal, large
-
-	// Height
-	export let resizable = false;
-	export let minHeight = '100px';
-	export let maxHeight;
 
 	// Colors
 	export let backgroundColor = 'aliceblue';
@@ -552,14 +547,18 @@
 		};
 	})();
 
-	$: {
-		const {valid, fixed, transcription: t} = _transcription.validate(transcription, {fix: true});
-		if (valid || fixed) {
-			transcriptionData = t;
-		} else {
-			// transcriptionData = [];
-		}
-	};
+	// $: {
+	// 	const {valid, fixed, transcription: t} = _transcription.validate(transcription, {fix: true});
+	// 	if (valid || fixed) {
+	// 		transcriptionData = t;
+	// 	} else {
+	// 		// transcriptionData = [];
+	// 	}
+	// };
+
+	let playerHeightInPx;
+
+	let container, containerWidth;
 
 </script>
 
@@ -572,14 +571,53 @@
         -khtml-user-select: none;
         -moz-user-select: none;
         -ms-user-select: none;
+
+		height: 100%;
+		max-height: inherit;
+		display: flex;
+		flex-flow: column nowrap;
+	}
+
+	.player-container {
+		flex: 0 0 80px;
+	}
+
+	.toolbar-container {
+		flex: 0 0 32px;
+		display: flex;
+		align-items: center;
+		margin: 0.25rem 0;
 	}
 
 	.transcription-container {
 		position: relative;
-		height: 100%;
+		flex: 1 1 auto;
+		overflow: auto;
 		line-height: 1.5;
 		font-size: max(var(--min-font-size), min(var(--max-font-size) ,calc(var(--font-step-amount) * var(--font-step) + var(--base-font-size))));
+
+		overflow-y: auto;
+        background-color: var(--background-color);
+        border-radius: 0.5rem;
 	}
+
+	.transcription-container::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    .transcription-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 0.5rem;
+    }
+    
+    .transcription-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 0.5rem;
+    }
+
+    .transcription-container::-webkit-scrollbar-thumb:hover {
+        background: #555; 
+    }
 
 	.settings {
 		background-image: url('./images/settings-24px.svg');
@@ -592,25 +630,29 @@
 		cursor: pointer;
 	}
 </style>
-<div class="container">
-    <ContextMenu bind:open={openContextMenu} bind:close={closeContextMenu}>
-        <SimpleModal>
-			<WavesurferPlayer 
-				url={audio} 
-				zoomEnabled={$editMode} 
-				seekEnabled={!$editMode} 
-				moveEnabled={$editMode} 
-				playEnabled={!$editMode || true} 
-				bind:regions={transcriptionData}
-				bind:autoplay
-				displayRegions={$editMode}
-				{regionColor}
-				{backgroundColor}
-				{primaryColor}
-				{secondaryColor}
-				height={_playerHeight}
-			/>
-			<div style="display: flex; align-items: center; justify-content: {canEdit ? 'space-between' : 'flex-end'}; width: 100%; margin: 0.25rem 0;">
+
+<div bind:this={container} bind:offsetWidth={containerWidth} class="container" style="--player-height: {_playerHeight}px">
+	<ContextMenu contentContainer={container} bind:open={openContextMenu} bind:close={closeContextMenu}>
+		<SimpleModal>
+			<div class="player-container">
+				<WavesurferPlayer 
+					url={audio} 
+					zoomEnabled={$editMode} 
+					seekEnabled={!$editMode} 
+					moveEnabled={$editMode} 
+					playEnabled={!$editMode || true} 
+					bind:regions={transcriptionData}
+					bind:autoplay
+					displayRegions={$editMode}
+					{regionColor}
+					{backgroundColor}
+					{primaryColor}
+					{secondaryColor}
+					height={_playerHeight}
+				/>
+			</div>
+			{#if canEdit || settings.length}
+			<div class="toolbar-container" style="justify-content: {canEdit ? 'space-between' : 'flex-end'};">
 				{#if canEdit}
 					{#if $editMode}
 					<div style="display: flex;">
@@ -628,14 +670,14 @@
 				<span class="settings" bind:this={settingsButton} on:click={onSettingClicked}></span>
 				{/if}
 			</div>
-
-			<div bind:this={transcriptionContainerElement} class="transcription-container" style="--line-height: {lineHeight}; --min-font-size: {minFontSize}; --max-font-size: {maxFontSize}; --base-font-size: {baseFontSize}; --font-step-amount: {fontStepAmount}; --font-step: {fontStep};">
+			{/if}
+			<div bind:this={transcriptionContainerElement} class="transcription-container" style="--line-height: {lineHeight}; --min-font-size: {minFontSize}; --max-font-size: {maxFontSize}; --base-font-size: {baseFontSize}; --font-step-amount: {fontStepAmount}; --font-step: {fontStep}; --background-color: {backgroundColor}">
 				<Notifications bind:addNotification={addNotification}>
-					<Resizable {autoscroll} {resizable} {minHeight} {maxHeight}>
+					<Resizable {backgroundColor} container={transcriptionContainerElement} {containerWidth} {autoscroll}>
 						{#if $editMode}
-							<TranscriptionEdit bind:transcription={transcriptionData} {fontSize} {regionColor}/>
+						<TranscriptionEdit bind:transcription={transcriptionData} {fontSize} {regionColor}/>
 						{:else}
-							<TranscriptionView transcription={transcriptionData} {fontSize} progressColor={secondaryColor}/>
+						<TranscriptionView transcription={transcriptionData} {fontSize} progressColor={secondaryColor}/>
 						{/if}
 					</Resizable>
 				</Notifications>

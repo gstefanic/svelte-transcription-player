@@ -48,12 +48,22 @@
 
     setContext(key, { open, close });
 
-    let contentElement;
+    export let contentContainer;
     let enableDefaultContextMenu;
-    // onMount(async () => enableDefaultContextMenu = disableDefaultContextMenu(contentElement));
-    onDestroy(async () => {
-        // enableDefaultContextMenu && enableDefaultContextMenu();
-        enableScroll = enableScroll && enableScroll();
+    onMount(async () => {
+
+        if (contentContainer instanceof HTMLElement) {
+            contentContainer.addEventListener('contextmenu', preventDefault);
+        } else {
+            // throw new Error('contentContainer instanceof HTMLElement');
+        }
+
+        return () => {
+            enableScroll = enableScroll && enableScroll();
+            if (contentContainer instanceof HTMLElement) {
+                contentContainer.removeEventListener('contextmenu', preventDefault);
+            }
+        }
     });
 
 
@@ -84,7 +94,7 @@
     let container;
 
     const preventDefault = e => {
-        if (isAncestorOfNode(contentElement, event.target) || isAncestorOfNode(container, event.target)) {
+        if (isAncestorOfNode(contentContainer, event.target) || isAncestorOfNode(container, event.target)) {
             e.preventDefault();
         }
     };
@@ -118,9 +128,7 @@
 </div>
 {/if}
 
-<div bind:this={contentElement} on:contextmenu={preventDefault}>
-    <slot></slot>
-</div>
+<slot></slot>
 
 <style>
     .container {

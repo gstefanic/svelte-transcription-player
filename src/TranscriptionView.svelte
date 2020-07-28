@@ -20,33 +20,49 @@
 
     let autoscroll = true;
 
-    const { getContainer, isVisible, shouldBeVisible } = getContext('resizable');
+    const { getContainer, isVisible, shouldBeVisible, on, off } = getContext('resizable');
 
     const { isRegion, getPrevRegion, getNextRegion } = getContext(contextKey);
 
     onMount(async () => {
         lines = container.getElementsByClassName('line');
-        const wrapper = getContainer();
+        let wrapper;
+
+        let onWrapperAdded, onWrapperRemoved;
+
+        on('container-added', onWrapperAdded = () => {
+            wrapper = getContainer();
+            if (wrapper instanceof HTMLElement) {
+                wrapper.addEventListener('wheel', wrapperOnScroll);
+                wrapper.addEventListener('touchmove', wrapperOnScroll);
+            }
+        });
+
+        on('container-removed', onWrapperRemoved = () => {
+            if (wrapper instanceof HTMLElement) {
+                wrapper.addEventListener('wheel', wrapperOnScroll);
+                wrapper.addEventListener('touchmove', wrapperOnScroll);
+                wrapper = undefined;
+            }
+        });
 
         let timer;
         let wrapperOnScroll = () => {
             clearTimeout(timer);
             autoscroll = false;
             timer = setTimeout(() => {
-                const scrollOfProgress = getScrollOfProgress();
-                autoscroll = isVisible(scrollOfProgress) || isVisible(scrollOfProgress - heightOfLine);
+                const {top, bottom} = getScrollOfProgress();
+                autoscroll = isVisible(top) || isVisible(bottom);
             }, 1000);
         };
 
-
-        if (wrapper instanceof HTMLElement) {
-            wrapper.addEventListener('wheel', wrapperOnScroll);
-            wrapper.addEventListener('touchmove', wrapperOnScroll);
-        }
-
         return () => {
-            wrapper.removeEventListener('wheel', wrapperOnScroll);
-            wrapper.removeEventListener('touchmove', wrapperOnScroll);
+            if (wrapper instanceof HTMLElement) {
+                wrapper.removeEventListener('wheel', wrapperOnScroll);
+                wrapper.removeEventListener('touchmove', wrapperOnScroll);
+            }
+            off('container-added', onWrapperAdded);
+            off('container-removed', onWrapperRemoved)
         }
     });
 
@@ -127,8 +143,12 @@
                 const lineTop = lineElement.offsetTop;
                 const lineHeight = lineElement.offsetHeight;
                 const adjustedLineHeight = lineHeight;
-                const progressLineNumber = Math.ceil((adjustedLineHeight * currentLineProgress) / heightOfLine);
-                return lineTop + (progressLineNumber) * heightOfLine;
+                const progressLineNumber = Math.floor((adjustedLineHeight * currentLineProgress) / heightOfLine);
+                const topOfRow = lineTop + (progressLineNumber) * heightOfLine;
+                return {
+                    top: topOfRow,
+                    bottom: topOfRow + heightOfLine,
+                };
             }
         }
         return 0;
@@ -136,9 +156,9 @@
 
     const scrollIfNeeded = (() => {
         if (autoscroll && currentLineProgress) {
-            const scrollOfProgress = getScrollOfProgress();
-            if (!isVisible(scrollOfProgress)) {
-                shouldBeVisible({top: scrollOfProgress - heightOfLine, bottom: scrollOfProgress});
+            const {bottom, top} = getScrollOfProgress();
+            if (!isVisible(top) || !isVisible(bottom)) {
+                shouldBeVisible({top, bottom});
             }
         }
     }).limit(100);
@@ -170,7 +190,9 @@
 
     .container {
         position: relative;
-        padding: 0.5rem;
+        margin: 0.5rem;
+        height: 100%;
+        /* background-color: aliceblue; */
     }
 
 </style>

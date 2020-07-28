@@ -1,4 +1,5 @@
 <script>
+	import { onMount } from 'svelte';
 	import { default as Color } from 'color';
 	export const states = {
 		DEFAULT: 'default',
@@ -40,7 +41,7 @@
     $: disabledColor = Color(bgColor).darken(0.2).fade(0.5).string();
 	
 	$: _rounded = rounded ? (typeof rounded === 'string' ? rounded : (isNaN(parseFloat(rounded)) ? true : (rounded + 'px'))) : 0;
-	$: radius = _rounded === true ? (`${_height / 2}px`) : _rounded;
+	$: radius = _rounded === true ? (`${btnHeight / 2}px`) : _rounded;
 	
     $: buttonHeight = typeof height === 'string' ? height : (isNaN(parseFloat(height)) ? defaultHeight : (height + 'px'));
     
@@ -55,8 +56,18 @@
 		}
 	};
 	
-	let _width, _height;
-	
+	let _width, _height, container, btnWidth, btnHeight;
+
+	onMount(async () => {
+		if (container instanceof HTMLElement) {
+			btnWidth = container.offsetWidth;
+			btnHeight = container.offsetHeight;
+		}
+	});
+
+	$: btnWidth = _width;
+	$: btnHeight = _height;
+
 	const click = event => {
 		if (!disabled && state === states.DEFAULT) {
 			state = states.LOADING
@@ -79,8 +90,8 @@
 	
 </script>
 
-<div class="container" bind:offsetWidth={_width} bind:offsetHeight={_height} class:loading={state === states.LOADING} class:disabled
-		 style="--button-height: {buttonHeight}; --bg-color: {bgColor}; --font-color: {color}; --radius: {radius}; --pulse-color: {pulseColor}; --font-size: {_fontSize}; --h-margin: {_height / 2}px; --hover-color: {hoverColor}; --disabled-color: {disabledColor}; {css}" on:click={click}>
+<div class="container" bind:this={container} bind:offsetWidth={_width} bind:offsetHeight={_height} class:loading={state === states.LOADING} class:disabled
+		 style="--button-height: {buttonHeight}; --bg-color: {bgColor}; --font-color: {color}; --radius: {radius}; --pulse-color: {pulseColor}; --font-size: {_fontSize}; --h-margin: {btnHeight / 2}px; --hover-color: {hoverColor}; --disabled-color: {disabledColor}; {css}" on:click={click}>
 	<div class="inner" style="--font-weight: {fontWeight}">
 		<slot></slot>
 	</div>

@@ -2,8 +2,9 @@
     import { onMount, createEventDispatcher, setContext } from 'svelte';
     import interact from 'interactjs';
 
-    export let maxHeight = 300;
-    export let minHeight = 100;
+    export let maxHeight;
+    export let minHeight;
+    export let resizable = true;
     export let autoscroll;
 
     const key = 'resizable';
@@ -88,22 +89,26 @@
 
 </script>
 
-<div bind:this={container} bind:offsetWidth={containerWidth} class="container" style="--max-h:{maxHeight}px; --min-h:{minHeight}px;">
+<div bind:this={container} bind:offsetWidth={containerWidth} class="container" style="--max-h:{maxHeight}; --min-h:{minHeight};">
     <slot></slot>
 </div>
+{#if resizable}
 <div class="handle" use:verticalDrag />
+{/if}
 
 <style>
     .container {
         overflow-y: auto;
-        max-height: var(--max-h);
         min-height: var(--min-h);
+        max-height: var(--max-h);
         position: relative;
+        background-color: aliceblue;
+        border-radius: 0.5rem;
     }
 
     .handle {
         --handle-color: gray;
-        --handle-height: 2px;
+        --handle-height: 4px;
         --container-h: 10px;
         bottom: 0;
         height: var(--container-h);

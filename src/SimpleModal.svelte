@@ -54,7 +54,7 @@
   let onOpened = toVoid;
   let onClosed = toVoid;
 
-  const open = (
+  export const open = (
     NewComponent,
     newProps = {},
     options = {},
@@ -69,7 +69,7 @@
     onClosed = callback.onClosed || toVoid;
   };
 
-  const close = (callback = {}) => {
+  export const close = (callback = {}) => {
     onClose = callback.onClose || onClose;
     onClosed = callback.onClosed || onClosed;
     Component = null;

@@ -12,7 +12,7 @@
     export let start, end;
     export let min, max;
     export let index;
-    export let color = 'green';
+    export let color = '#7F7FFF';
     export let pxPerSec;
     export let scrollLeft;
     export let resizable;
@@ -20,8 +20,16 @@
     let maxStart, minEnd;
     $: maxStart = end - $minRegionDuration;
     $: minEnd = start + $minRegionDuration;
-    $: handleColor = Color(color).lighten(0.75).fade(0.75).string();
+    $: handleColor = Color(color).darken(0.25).fade(0.65).string();
     $: regionColor = getRegionColor(color, $activeIndex);
+
+    const getRegionColor = (color) => {
+        if ($activeIndex === index) {
+            return Color(color).darken(0.1).fade(0.4).string();
+        } else {
+            return Color(color).fade(0.5).string();
+        }
+    };
 
     let resizing, draggingHandle;
 
@@ -125,14 +133,6 @@
         },
     };
 
-    const getRegionColor = (color) => {
-        if ($activeIndex === index) {
-            return Color(color).lighten(0.35).fade(0.40).string();
-        } else {
-            return Color(color).lighten(0.5).fade(0.5).string();
-        }
-    };
-
 </script>
 
 <style>
@@ -160,7 +160,6 @@
         position: absolute;
         height: 100%;
         display: inline-flex;
-        opacity: 0.25;
     }
 
     .handle-left {
@@ -191,7 +190,7 @@
     on:tap={on.region.tap}
     class:resizing
     class:active={index === $activeIndex}
-    style="--offset-left: {offsetLeft}px; --region-width: {width}px; --region-color: {regionColor}; --handle-color: {color}">
+    style="--offset-left: {offsetLeft}px; --region-width: {width}px; --region-color: {regionColor}; --handle-color: {handleColor}">
 
     <div class="handle handle-left">
         {#if resizable}

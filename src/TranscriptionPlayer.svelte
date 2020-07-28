@@ -1,18 +1,27 @@
 <script>
-	import { onMount, setContext, tick } from 'svelte';
+	import { onMount, setContext, getContext, tick } from 'svelte';
 	import { fade } from 'svelte/transition';
+	import SimpleModal from './SimpleModal';
+    import ContextMenu from './ContextMenu';
 	import WavesurferPlayer from './WavesurferPlayer';
 	import TranscriptionView from './TranscriptionView';
 	import TranscriptionEdit from './TranscriptionEdit';
 	import Resizable from './Resizable';
-	import SimpleModal from './SimpleModal';
-	import ContextMenu from './ContextMenu';
+	import Notifications from './Notifications';
 	import Button from './Button';
-	import { isFloat, toFixed, countWords, removeWhitespaces, formatTime, coordinatesOnPage } from './utils';
+	import { isFloat, toFixed, countWords, removeWhitespaces, formatTime, coordinatesOnPage, isFunction, textMetrics } from './utils';
 	import { contextKey, duration, minRegionDuration, editMode, activeIndex } from './store';
 
+	// Bindings
+	let addNotification, transcriptionContainerElement;
+	let openContextMenu, closeContextMenu;
+	let settingsButton;
+
 	export let audio;
-	// export let transcription;
+	export let onEdited; // is is falsey then editing is disabled
+	export let transcription;
+
+	$: canEdit = isFunction(onEdited);
 
 	let transcriptionData = [
 		{ text: "The snow glows white on the mountain tonight.", start: 13.79, end: 17 },
@@ -38,15 +47,78 @@
 	
 	const toVoid = () => {};
 
-	const toggleEdit = async () => {
-		setTimeout(() => $activeIndex = -1, 1);
-		$editMode = !$editMode;
+	// Player Height
+	const playerHeights = {
+		small: 50,
+		normal: 80,
+		large: 120,
 	};
+	const defaultPlayerSize = playerHeights.normal;
 
-	let fontSize = 1.5;
-	let autoplay = true, autoscroll = true;
+	$: _playerHeight = playerHeight in playerHeights ? playerHeights[playerHeight] : defaultPlayerSize;
+	export let playerHeight; // small, normal, large
 
-	const changeFont = increase => () => fontSize = Math.min(2, Math.max(0.75, increase ? fontSize + 0.25 : fontSize - 0.25));
+	// Height
+	export let resizable = false;
+	export let minHeight = '100px';
+	export let maxHeight;
+
+	// Colors
+	export let backgroundColor = 'aliceblue';
+	export let primaryColor = '#4353FF';
+	export let secondaryColor = '#D9DCFF';
+	export let regionColor = '#7F7FFF'; // faded by 40%
+
+	// Line height
+	export let lineHeight = 1.5;
+
+	// Autoplay
+	export let autoplay = true;
+	export let autoplayConfigurable = false;
+
+	// Autoscroll
+	export let autoscroll = true;
+	export let autoscrollConfigurable = false;
+
+	// Font
+	export let fontConfigurable = false;
+	const getSizeInPx = (() => {
+		const e = document.createElement('div');
+		e.style.lineHeight = 1;
+		return css => textMetrics('A', e).height;
+	})();
+
+	let fontSize;
+	$: tick().then(() => fontSize = textMetrics('A', transcriptionContainerElement, {'line-height': 1}, fontStep, minFontSize, maxFontSize, baseFontSize, fontStepAmount).height);
+	let fontStep = 0;
+	export let fontStepAmount = '0.25rem';
+	export let baseFontSize = '1.5rem';
+	export let minFontSize = '0.75rem';
+	export let maxFontSize = '2rem';
+
+	const {
+		increaseFontSize,
+		decreaseFontSize
+	} = {
+		increaseFontSize: () => {
+			const fontSizeInPx = textMetrics('A', transcriptionContainerElement).height;
+			const maxFontSizeInPx = textMetrics('A', transcriptionContainerElement, {
+				'font-size': maxFontSize,
+			}).height;
+			if (fontSizeInPx < maxFontSizeInPx) {
+				fontStep += 1;
+			}
+		},
+		decreaseFontSize: () => {
+			const fontSizeInPx = textMetrics('A', transcriptionContainerElement).height;
+			const minFontSizeInPx = textMetrics('A', transcriptionContainerElement, {
+				'font-size': minFontSize,
+			}).height;
+			if (fontSizeInPx > minFontSizeInPx) {
+				fontStep -= 1;
+			}
+		}
+	};
 
 	const _transcription = {
 		isRegion: (i, t = transcriptionData) => {
@@ -192,7 +264,10 @@
 			return nextRegion ? nextRegion.end - $minRegionDuration : $duration;
 		},
 		updateSection: (index, {text, start, end, color}, t = transcriptionData, fix = false) => {
-			if (t[index] === undefined) return false;
+			if (t[index] === undefined) return {
+				success: false,
+				transcription: t,
+			};
 
 			if (text !== undefined) t[index].text = _transcription.fixSectionText(text);
 
@@ -214,10 +289,11 @@
 						nextRegion.start = end;
 					}
 				} else if (fix && fix.times) {
-					return _transcription.updateSection(index, {
+					const res = _transcription.updateSection(index, {
 						start: validateStart(start) ? start : (prevRegion ? prevRegion.start + $minRegionDuration : 0),
 						end: validateEnd(end) ? end : (nextRegion ? nextRegion.end - $minRegionDuration : $duration),
 					}, t, Object.assign(fix, { times: false }));
+					return { ...res, fixed: true }
 				} else {
 					return {
 						success: false,
@@ -230,13 +306,13 @@
 				t[index].color = color;
 			}
 
-			if (_transcription.isRegion(index, t) && fix && fix.color === true) {
+			if (fix && fix.color === true && _transcription.isRegion(index, t)) {
 				if (!_transcription.colors.includes(t[index].color)) {
 					t[index].color = _transcription.getColor(index, t);
 				}
 			}
 
-			if (t === transcriptionData && (!fix || fix.skipAssigment !== true)) {
+			if ((!fix || fix.skipAssigment !== true) && t === transcriptionData) {
 				transcriptionData = t;
 			}
 
@@ -317,11 +393,68 @@
 			}
 		},
 		colors: ['red', 'blue', 'orangered'],
+		validate: (t, props) => {
+			const {fix} = props || {};
+			if (t instanceof Array) {
+				let wasFixed = false;
+				t.forEach((section, index) => {
+					const {success, fixed} = _transcription.updateSection(index, section, t, { times: fix === true, skipAssigment: true });
+					if (!success) {
+						return {
+							transcription: t,
+							valid: false,
+							fixed: false,
+						}
+					}
+					wasFixed |= fixed;
+				});
+				return {
+					transcription: t,
+					valid: !wasFixed,
+					fixed: wasFixed,
+				};
+			} else {
+				return {
+					transcription: t,
+					valid: false,
+					fixed: false,
+				}
+				throw new Error('implementation error');
+			}
+		},
+		areEqual: (t1, t2) => {
+			if (t1 && t2 && t1.length === t2.length) {
+				for (let i = 0; i < t2.length; i++) {
+					const s1 = t1[i];
+					const s2 = t2[i];
+					if (!s1 || !s2 || s1.text !== s2.text || s1.start !== s2.start || s1.end !== s2.end) {
+						return false;
+					}
+				}
+				return true
+			} else {
+				return false;
+			}
+		},
 	};
 
 	setContext(contextKey, _transcription);
 
-	let openContextMenu, closeContextMenu, settingButton, settingOpened;
+	// Settings
+	let settingOpened;
+
+	const allSettings = {
+		autoscroll: { name: 'Autoscroll', type: 'checkbox', callback: checked => autoscroll = checked, checked: autoscroll},
+		autoplay: { name: 'Autoplay', type: 'checkbox', callback: checked => autoplay = checked, checked: autoplay},
+		font: { name: 'Font Size', submenu: [
+			{ name: 'Decrease', callback: decreaseFontSize, },
+			{ name: 'Increase', callback: increaseFontSize, },
+		]},
+	};
+
+	const populateSettings = params => Object.keys(params).filter(key => params[key] === true).map(key => allSettings[key]);
+
+	$: settings = populateSettings({autoplay: autoplayConfigurable, autoscroll: autoscrollConfigurable, font: fontConfigurable});
 
 	const onSettingClicked = event => {
 		settingOpened = !settingOpened;
@@ -330,59 +463,103 @@
 	$: settingOpened ? openSetting() : (closeContextMenu || toVoid)();
 
 	const openSetting = () => {
-		const { pageX, pageY } = coordinatesOnPage(settingButton, { clientX: 0, clientY: 0});
+		const { pageX, pageY } = coordinatesOnPage(settingsButton, { clientX: 0, clientY: 0});
 		openContextMenu({
 			pageX: pageX, 
 			pageY: pageY,
 			closeOnAction: false,
 			openDirection: 'left',
-		}, [
-			{ name: 'Autoscroll', type: 'checkbox', callback: checked => autoscroll = checked, checked: autoscroll},
-			{ name: 'Autoplay', type: 'checkbox', callback: checked => autoplay = checked, checked: autoplay},
-			{ name: 'Font Size', submenu: [
-				{ name: 'Decrease', callback: changeFont(false), },
-				{ name: 'Increase', callback: changeFont(true), },
-			]},
-		]);
+		}, settings);
 	};
 
-	const initialTranscriptionValidation = (t) => {
-		if (t instanceof Array) {
-			t.forEach((_, index) => {
-				_transcription.updateSection(index, {}, t, { color: true });
-			});
-			return t;
+	// Editing
+	let doneEditingRunning;
+	const {
+		startEditing,
+		cancelEditing,
+		doneEditing,
+	} = (() => {
+		let savedState;
+		const saveState = () => {
+			savedState = _transcription.getTranscription(true);
+		};
+
+		const applySavedState = () => {
+			if (savedState) {
+				transcriptionData = savedState;
+			}
+		};
+
+		const setEditMode = em => {
+			setTimeout(() => $activeIndex = -1, 1);
+			$editMode = em;
+		};
+		const hasTranscriptionChanged = () => !_transcription.areEqual(transcriptionData, savedState);
+
+		return {
+			startEditing: () => {
+				saveState();
+				setEditMode(true);
+			},
+			cancelEditing: () => {
+				applySavedState();
+				setEditMode(false);
+			},
+			doneEditing: async () => {
+				doneEditingRunning = true;
+				if (isFunction(onEdited)) {
+					if (hasTranscriptionChanged()) {
+						const {approved, response} = await new Promise((resolve, reject) => {
+							onEdited(
+								transcriptionData, 
+								response => resolve({approved: true, response}), 
+								response => resolve({approved: false, response})
+							);
+						});
+
+						if (approved === true) {
+							const {transcription: t} = response || {};
+							if (t) {
+								const {valid, fixed, transcription: tr} = _transcription.validate(t, {fix: true});
+								if (valid || fixed) {
+									transcriptionData = tr;
+								}
+							}
+							setEditMode(false);
+							addNotification({
+								text: 'Transcription was successfully updated.',
+								duration: 2000,
+							});
+						} else {
+							const reason = (response && response.notification) ? (' ' + response.notification) : '';
+							addNotification({
+								text: 'Transcription could not be updated.' + reason,
+								color: '#FF5757',
+								duration: 5000,
+							});
+						}
+					} else {
+						setTimeout(() => $activeIndex = -1, 1);
+						setEditMode(false);
+					}
+					doneEditingRunning = false;
+				} else {
+					console.error('onEdited is not a function, impl error?');
+					setEditMode(false);
+					doneEditingRunning = true;
+				}
+			},
+		};
+	})();
+
+	$: {
+		const {valid, fixed, transcription: t} = _transcription.validate(transcription, {fix: true});
+		if (valid || fixed) {
+			transcriptionData = t;
 		} else {
-			throw new Error('implementation error');
+			// transcriptionData = [];
 		}
 	};
-
-	let savedState;
-	const saveState = () => {
-		savedState = _transcription.getTranscription(true);
-	};
-
-	const applySavedState = () => {
-		if (savedState) {
-			transcriptionData = savedState;
-		}
-	}
-
-	const startEditing = () => {
-		saveState();
-		$editMode = true;
-	};
-
-	const doneEditing = () => {
-		$editMode = false;
-	};
-
-	const cancelEditing = () => {
-		applySavedState();
-		$editMode = false;
-	};
-
-	transcriptionData = initialTranscriptionValidation(transcriptionData);
 
 </script>
 
@@ -398,9 +575,10 @@
 	}
 
 	.transcription-container {
+		position: relative;
 		height: 100%;
-		font-size: var(--font-size);
 		line-height: 1.5;
+		font-size: max(var(--min-font-size), min(var(--max-font-size) ,calc(var(--font-step-amount) * var(--font-step) + var(--base-font-size))));
 	}
 
 	.settings {
@@ -414,10 +592,9 @@
 		cursor: pointer;
 	}
 </style>
-
-<div class="container" style="--font-size:{fontSize}rem">
-	<ContextMenu bind:open={openContextMenu} bind:close={closeContextMenu}>
-		<SimpleModal>
+<div class="container">
+    <ContextMenu bind:open={openContextMenu} bind:close={closeContextMenu}>
+        <SimpleModal>
 			<WavesurferPlayer 
 				url={audio} 
 				zoomEnabled={$editMode} 
@@ -427,29 +604,41 @@
 				bind:regions={transcriptionData}
 				bind:autoplay
 				displayRegions={$editMode}
+				{regionColor}
+				{backgroundColor}
+				{primaryColor}
+				{secondaryColor}
+				height={_playerHeight}
 			/>
-			<div style="display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 0.25rem 0;">
-				{#if $editMode}
-				<div style="display: flex;">
-					<Button onclick={doneEditing} height={'100%'} fontWeight={400} colors={{'default': '#4353FF'}}>Done</Button>
-					<Button onclick={cancelEditing} height={'100%'} fontWeight={400} css={'margin-left: 0.5rem;'} colors={{'default': '#ff3737'}}>Cancel</Button>
-				</div>
-				{:else}
-				<div style="display: flex;">
-					<Button onclick={startEditing} height={'100%'} fontWeight={400} colors={{'default': '#4353FF'}}>Edit</Button>
-				</div>
+			<div style="display: flex; align-items: center; justify-content: {canEdit ? 'space-between' : 'flex-end'}; width: 100%; margin: 0.25rem 0;">
+				{#if canEdit}
+					{#if $editMode}
+					<div style="display: flex;">
+						<Button onclick={doneEditing} height={'100%'} fontWeight={400} colors={{'default': '#4353FF', loading: '#4353FF'}}>Done</Button>
+						<Button onclick={cancelEditing} height={'100%'} fontWeight={400} css={'margin-left: 0.5rem;'} colors={{'default': '#FF5757'}} disabled={doneEditingRunning}>Cancel</Button>
+					</div>
+					{:else}
+					<div style="display: flex;">
+						<Button onclick={startEditing} height={'100%'} fontWeight={400} colors={{'default': '#4353FF'}}>Edit</Button>
+					</div>
+					{/if}
 				{/if}
-				<span class="settings" bind:this={settingButton} on:click={onSettingClicked}></span>
+
+				{#if settings.length}
+				<span class="settings" bind:this={settingsButton} on:click={onSettingClicked}></span>
+				{/if}
 			</div>
 
-			<div class="transcription-container">
-				<Resizable {autoscroll}>
-					{#if $editMode}
-						<TranscriptionEdit bind:transcription={transcriptionData} {fontSize}/>
-					{:else}
-						<TranscriptionView transcription={transcriptionData} {fontSize}/>
-					{/if}
-				</Resizable>
+			<div bind:this={transcriptionContainerElement} class="transcription-container" style="--line-height: {lineHeight}; --min-font-size: {minFontSize}; --max-font-size: {maxFontSize}; --base-font-size: {baseFontSize}; --font-step-amount: {fontStepAmount}; --font-step: {fontStep};">
+				<Notifications bind:addNotification={addNotification}>
+					<Resizable {autoscroll} {resizable} {minHeight} {maxHeight}>
+						{#if $editMode}
+							<TranscriptionEdit bind:transcription={transcriptionData} {fontSize} {regionColor}/>
+						{:else}
+							<TranscriptionView transcription={transcriptionData} {fontSize} progressColor={secondaryColor}/>
+						{/if}
+					</Resizable>
+				</Notifications>
 			</div>
 		</SimpleModal>
 	</ContextMenu>

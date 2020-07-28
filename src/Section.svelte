@@ -8,7 +8,6 @@
     export let text;
     export let highlight;
     export let resizable = true;
-    export let color = 'red';
     export let index;
     export let container;
     export let containerWidth;
@@ -16,19 +15,21 @@
     export let fontSize;
     export let lineHeight;
     export let padding = 'normal';
+    export let color = '#7F7FFF';
+
+	$: handleColor = Color(color).darken(0.25).fade(0.65).string();
+    $: regionColor = getRegionColor(color, $activeIndex);
 
     const getRegionColor = (color) => {
         if ($activeIndex === index) {
-            return Color(color).lighten(0.35).fade(0.40).string();
+            return Color(color).darken(0.1).fade(0.4).string();
         } else {
-            return Color(color).lighten(0.5).fade(0.5).string();
+            return Color(color).fade(0.5).string();
         }
     };
 
-    $: sectionColor = getRegionColor(color, $activeIndex);
-    $: handleColor = Color(color).fade(0.75).string();
     $: fontSizeInPx = Math.min(
-        textMetrics('A', container, {'line-height': padding}, fontSize).height, 
+        textMetrics('A', container, {'line-height': padding}, fontSize, lineHeight).height, 
         textMetrics('A', container).height
     );
 
@@ -291,7 +292,7 @@
 {#if highlight}
 {#each parts as {top, left, height, width}, partIndex}
 <div class="part" bind:this={partElements[partIndex]} 
-    style="--top: {top}px; --left: {left}px; --height: {height}px; --width: {width}px; --section-color: {sectionColor}; --handle-color: {handleColor}; --inner-part-height: {fontSizeInPx}px;" 
+    style="--top: {top}px; --left: {left}px; --height: {height}px; --width: {width}px; --section-color: {regionColor}; --handle-color: {handleColor}; --inner-part-height: {fontSizeInPx}px;" 
     use:interactable
     on:tap={forward('section-click')}
     on:hold={forward('section-hold')}>
@@ -323,6 +324,7 @@
     }
 
     .part {
+        z-index: 1;
         position: absolute;
         top: var(--top);
         left: var(--left);

@@ -4,8 +4,6 @@
     import { toFixed } from './utils';
     import NewInput from './NewInput';
 
-    const { isRegion } = getContext(contextKey);
-
     const Void = {};
     const toVoid = () => Void;
 

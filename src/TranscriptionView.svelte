@@ -2,9 +2,13 @@
     import { onMount, beforeUpdate, getContext, tick } from 'svelte';
     import { duration, time, activeIndex, playing, contextKey } from './store';
     import { textMetrics } from './utils';
+    import { default as Color } from 'color';
     import './limit';
     export let transcription;
     export let fontSize;
+    export let progressColor = 'aliceblue';
+
+    $: hoverColor = Color(progressColor).darken(0.025).string();
 
     $: heightOfLine = container ? getLineHeight(fontSize) : 0;
 
@@ -147,16 +151,12 @@
 
 <style>
     .past {
-        /* --color-past: rgba(0,0,0,0.1); */
-        --color-past: aliceblue;
-        background-color: var(--color-past);
+        background-color: var(--progress-color);
     }
 
     .current {
-        /* --color-past: rgba(0,0,0,0.1); */
-        --color-past: aliceblue;
         --color-upcoming: transparent;
-        background: linear-gradient(to right, var(--color-past) var(--progress), var(--color-upcoming) var(--progress));
+        background: linear-gradient(to right, var(--progress-color) var(--progress), var(--color-upcoming) var(--progress));
     }
 
     .line {
@@ -164,19 +164,18 @@
     }
 
     .line:hover {
-        /* --color-hover: rgba(0,0,0,0.15); */
-        --color-hover: #e6f3ff;
-        background-color: var(--color-hover);
+        background-color: var(--hover-color);
         cursor: pointer;
     }
 
     .container {
         position: relative;
+        padding: 0.5rem;
     }
 
 </style>
 
-<div bind:this={container} class="container" style="--progress:{currentLineProgress * 100}%">
+<div bind:this={container} class="container" style="--progress:{currentLineProgress * 100}%; --progress-color: {progressColor}; --hover-color: {hoverColor};">
     {#each prepare(transcription) as {start, end, text}, index (start, end)}
     <span class="line" class:past={start <= $time && end <= $time} class:current={isCurrent(start, end, index, $time)} on:click={lineClick(index)}>
         {text}

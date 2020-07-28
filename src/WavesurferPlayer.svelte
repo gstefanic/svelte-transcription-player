@@ -19,6 +19,11 @@
     export let displayRegions = false;
     export let autoplay = true;
     export let height = 80;
+    export let regionColor = '#7F7FFF';
+    export let secondaryColor = '#D9DCFF';
+    export let primaryColor = '#4353FF';
+    export let backgroundColor = '#F0F8FF';
+    
 
     const states = {
         OK: 'ok',
@@ -182,8 +187,8 @@
             fillParent: true,
             scrollParent: false,
             backend: 'MediaElement',
-            waveColor: '#D9DCFF',
-            progressColor: '#4353FF',
+            waveColor: secondaryColor,
+            progressColor: primaryColor,
             cursorColor: 'transparent',
             barWidth: 3,
             barRadius: 3,
@@ -439,12 +444,20 @@
 
 </script>
 
-<div class="container" style="--wavesurfer-height: {height}px;">
+<div class="container" style="--wavesurfer-height: {height}px; --background-color: {backgroundColor}; --primary-color: {primaryColor}; --secondary-color: {secondaryColor};">
     <div class="playPauseButtonContainer">
         {#if $playing}
-        <div class="playPauseButton paused" class:disabled={!playEnabled} on:click={togglePlaying} in:whooshBackground></div>
+        <div class="playPauseButton paused" class:disabled={!playEnabled} on:click={togglePlaying}>
+            <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" in:whoosh>
+                <path d="M8 19c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2s-2 .9-2 2v10c0 1.1.9 2 2 2zm6-12v10c0 1.1.9 2 2 2s2-.9 2-2V7c0-1.1-.9-2-2-2s-2 .9-2 2z"/>
+            </svg>
+        </div>
         {:else}
-        <div class="playPauseButton" class:disabled={!playEnabled} on:click={togglePlaying} in:whooshBackground></div>
+        <div class="playPauseButton" class:disabled={!playEnabled} on:click={togglePlaying}>
+            <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24" in:whoosh>
+                <path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18c.62-.39.62-1.29 0-1.69L9.54 5.98C8.87 5.55 8 6.03 8 6.82z"/>
+            </svg>
+        </div>
         {/if}
     </div>
 
@@ -470,7 +483,7 @@
             index={i}
             min={getMin(i, $minRegionDuration)}
             max={getMax(i, $minRegionDuration)}
-            color={region.color}
+            color={region.color || regionColor}
             pxPerSec={curPxPerSec} 
             wavesurferWidth={wavesurferWidth} 
             scrollLeft={scrollLeft}
@@ -536,7 +549,7 @@
         -ms-user-select: none;
         user-select: none;
 
-        background-color: aliceblue;
+        background-color: var(--background-color);
         border-radius: 0.5rem;
         /* margin-left: 8px; */
     }
@@ -545,7 +558,7 @@
         flex: 1 0 200px;
         overflow: hidden;
         position: relative;
-        background-color: aliceblue;
+        background-color: var(--background-color);
         border-radius: 0.5rem;
         /* margin-left: 8px; */
     }
@@ -559,17 +572,11 @@
         flex: 0 0 var(--wavesurfer-height);
         position: relative;
     }
+
     .playPauseButton {
-        background-image: url('./images/play_arrow-24px.svg');
-        background-repeat: no-repeat;
-        background-position: center;
-        background-size: 80% 80%;
-        /* background-color: lightgray; */
         background-color: transparent;
-        border: solid 2px #D9DCFF;
-        fill: #D9DCFF;
+        border: solid 2px var(--secondary-color);
         box-sizing: border-box;
-        /* border-radius: 0.5rem; */
         border-radius: 50%;
         cursor: pointer;
         position: absolute;
@@ -580,8 +587,14 @@
         margin: 10%;
     }
 
-    .paused {
-        background-image: url('./images/pause-24px.svg');
+    .playPauseButton > svg {
+        position: relative;
+        width: 80%;
+        height: 80%;
+        left: 50%;
+		top: 50%;
+		transform: translate(-50%, -50%);
+        fill: var(--primary-color);
     }
 
     .disabled {

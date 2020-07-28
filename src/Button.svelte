@@ -11,8 +11,6 @@
 	
     const defaultHeight = '2.6rem';
     
-    const getHoverColor = color => Color(color).darken(0.1).string();
-	
 	const defaultColors = {
 		[states.DEFAULT]: {background: 'blue', text: 'white'},
 		[states.LOADING]: {background: 'blue', text: 'white'},
@@ -28,7 +26,8 @@
 	export let colors = true;
     export let rounded = true; // false: sharp edges, number: border-radius in px, string: border-radius
     export let fontWeight = 700;
-    export let css;
+	export let css;
+	export let disabled = false;
 	let state = states.DEFAULT;
 		
 	$: _colors = (typeof colors === 'object' ? (Object.assign({}, defaultColors, colors)) : defaultColors);
@@ -37,7 +36,8 @@
 	$: bgColor = _color && _color.background ? _color.background : _color;
 	$: color = _color && _color.text ? _color.text : defaultColors[state].text;
     $: pulseColor = Color(bgColor).lighten(0).fade(0).string();
-    $: hoverColor = getHoverColor(bgColor);
+    $: hoverColor = Color(bgColor).darken(0.1).string();
+    $: disabledColor = Color(bgColor).darken(0.2).fade(0.5).string();
 	
 	$: _rounded = rounded ? (typeof rounded === 'string' ? rounded : (isNaN(parseFloat(rounded)) ? true : (rounded + 'px'))) : 0;
 	$: radius = _rounded === true ? (`${_height / 2}px`) : _rounded;
@@ -58,15 +58,18 @@
 	let _width, _height;
 	
 	const click = event => {
-		if (state === states.DEFAULT) {
+		if (!disabled && state === states.DEFAULT) {
 			state = states.LOADING
 			Promise.resolve((onclick || toVoid)(event))
 			.then(async (reject) => {
 				if (reject === true) {
 					state = states.DONE;
+					console.log('click returned true');
 				} else if (reject === false) {
+					console.log('click returned false');
 					state = states.ERROR;
 				} else {
+					console.log('click returned undefined');
 					state = states.DEFAULT;
 				}
 			})
@@ -74,25 +77,10 @@
 		}
 	};
 	
-	// let hovered;
-	// const enter = () => {
-	// 	hovered = true;
-	// 	if (state === states.DEFAULT) {
-	// 		state = states.HOVER;
-	// 	}
-	// };
-	
-	// const leave = () => {
-	// 	hovered = false;
-	// 	if (state === states.HOVER) {
-	// 		state = states.DEFAULT;
-	// 	}
-	// };
-	
 </script>
 
-<div class="container" bind:offsetWidth={_width} bind:offsetHeight={_height} class:loading={state === states.LOADING}
-		 style="--button-height: {buttonHeight}; --bg-color: {bgColor}; --font-color: {color}; --radius: {radius}; --pulse-color: {pulseColor}; --font-size: {_fontSize}; --h-margin: {_height / 2}px; --hover-color: {hoverColor}; {css}" on:click={click}>
+<div class="container" bind:offsetWidth={_width} bind:offsetHeight={_height} class:loading={state === states.LOADING} class:disabled
+		 style="--button-height: {buttonHeight}; --bg-color: {bgColor}; --font-color: {color}; --radius: {radius}; --pulse-color: {pulseColor}; --font-size: {_fontSize}; --h-margin: {_height / 2}px; --hover-color: {hoverColor}; --disabled-color: {disabledColor}; {css}" on:click={click}>
 	<div class="inner" style="--font-weight: {fontWeight}">
 		<slot></slot>
 	</div>
@@ -119,7 +107,7 @@
         margin-right: var(--h-margin);
 		font-size: var(--font-size);
 		font-weight: var(--font-weight);
-		line-height: 1;
+		line-height: 1.5;
 		display: inline-block;
 	}
 
@@ -132,23 +120,33 @@
 	}
 	
 	.container.loading {
+		background-color: var(--bg-color);
 		transform: scale(1);
 		animation: pulse 1s infinite;
+		box-sizing: unset;
+	}
+
+	.container.disabled {
+		border: solid 2px transparent;
+		/* background-color: var(--disabled-color); */
+		background-color: var(--bg-color);
+		opacity: 0.4;
+		cursor: default;
 	}
 	
 	@keyframes pulse {
 		0% {
-			transform: scale(0.95);
+			/* transform: scale(0.95); */
 			box-shadow: 0 0 0 0 var(--pulse-color);
 		}
 
 		70% {
-			transform: scale(1);
+			/* transform: scale(1); */
 			box-shadow: 0 0 0 4px rgba(0, 0, 0, 0);
 		}
 
 		100% {
-			transform: scale(0.95);
+			/* transform: scale(0.95); */
 			box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
 		}
 	}

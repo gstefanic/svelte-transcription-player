@@ -571,6 +571,7 @@
     .playPauseButtonContainer {
         flex: 0 0 var(--wavesurfer-height);
         position: relative;
+        height: 100%;
     }
 
     .playPauseButton {

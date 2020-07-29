@@ -2,6 +2,7 @@
     import { getContext } from 'svelte';
     import { contextKey } from './store';
     import { toFixed } from './utils';
+    import Button from './Button';
     import NewInput from './NewInput';
 
     const Void = {};
@@ -92,15 +93,17 @@
         {/if}
     </div>
 
-    <div style="display: flex; justify-content: space-between; margin-top: 1rem;">
+    <div style="display: flex; justify-content: space-between; margin-top: 1rem; height: 25px;">
         <div>
-            <button on:click={_close}>Cancel</button>
             {#if remove !== undefined}
-			<button on:click={_delete}>Delete</button>
+			<Button onclick={_delete} height={'100%'} colors={{'default': '#FF5757'}}>Delete</Button>
+            {:else}
+            <Button onclick={_close} height={'100%'} colors={{'default': '#FF5757'}}>Delete</Button>
             {/if}
         </div>
         <div>
-            <button on:click={_done} disabled={!(isValidText && (!beRegion || isValidStart && isValidEnd))}>Done</button>
+            <!-- <button on:click={_done} disabled={!(isValidText && (!beRegion || isValidStart && isValidEnd))}>Done</button> -->
+            <Button onclick={_done} disabled={!(isValidText && (!beRegion || isValidStart && isValidEnd))} height={'100%'}>Done</Button>
         </div>
     </div>
 </div>

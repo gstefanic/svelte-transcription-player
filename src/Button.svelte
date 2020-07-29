@@ -1,6 +1,8 @@
+
 <script>
 	import { onMount } from 'svelte';
 	import { default as Color } from 'color';
+	import { isFloat } from './utils.js';
 	export const states = {
 		DEFAULT: 'default',
 		LOADING: 'loading',
@@ -22,11 +24,11 @@
 	export let onclick = toVoid;
 	export let resetOnError = false;
 	export let resetOnDone = false;
-    export let height = defaultHeight;
-    export let fontSize;
+	export let height = defaultHeight;
+	export let fontSize = '1rem';
 	export let colors = true;
-    export let rounded = true; // false: sharp edges, number: border-radius in px, string: border-radius
-    export let fontWeight = 700;
+	export let rounded = true; // false: sharp edges, number: border-radius in px, string: border-radius
+	export let fontWeight = 400;
 	export let css;
 	export let disabled = false;
 	let state = states.DEFAULT;
@@ -36,17 +38,17 @@
 	
 	$: bgColor = _color && _color.background ? _color.background : _color;
 	$: color = _color && _color.text ? _color.text : defaultColors[state].text;
-    $: pulseColor = Color(bgColor).lighten(0).fade(0).string();
-    $: hoverColor = Color(bgColor).darken(0.1).string();
-    $: disabledColor = Color(bgColor).darken(0.2).fade(0.5).string();
+	$: pulseColor = Color(bgColor).lighten(0).fade(0).string();
+	$: hoverColor = Color(bgColor).darken(0.1).string();
+	$: disabledColor = Color(bgColor).darken(0.2).fade(0.5).string();
 	
 	$: _rounded = rounded ? (typeof rounded === 'string' ? rounded : (isNaN(parseFloat(rounded)) ? true : (rounded + 'px'))) : 0;
 	$: radius = _rounded === true ? (`${btnHeight / 2}px`) : _rounded;
 	
-    $: buttonHeight = typeof height === 'string' ? height : (isNaN(parseFloat(height)) ? defaultHeight : (height + 'px'));
+	$: buttonHeight = typeof height === 'string' ? height : (isNaN(parseFloat(height)) ? defaultHeight : (height + 'px'));
     
-    const defaultFontSize = () => `${buttonHeight * 0.5}px`;
-    $: _fontSize = fontSize ? (isNaN(parseFloat(fontSize)) ? (typeof fontSize === 'string' ? fontSize : defaultFontSize()) : `${fontSize}px`) : defaultFontSize();
+	const defaultFontSize = () => `${_height * 0.5}px`;
+	$: _fontSize = fontSize ? (isFloat(fontSize) ? `${fontSize}px` : (typeof fontSize === 'string' ? fontSize : defaultFontSize())) : defaultFontSize(_height);
 	
 	$: onStateChange(state);
 	
@@ -75,12 +77,9 @@
 			.then(async (reject) => {
 				if (reject === true) {
 					state = states.DONE;
-					console.log('click returned true');
 				} else if (reject === false) {
-					console.log('click returned false');
 					state = states.ERROR;
 				} else {
-					console.log('click returned undefined');
 					state = states.DEFAULT;
 				}
 			})
@@ -91,7 +90,7 @@
 </script>
 
 <div class="container" bind:this={container} bind:offsetWidth={_width} bind:offsetHeight={_height} class:loading={state === states.LOADING} class:disabled
-		 style="--button-height: {buttonHeight}; --bg-color: {bgColor}; --font-color: {color}; --radius: {radius}; --pulse-color: {pulseColor}; --font-size: {_fontSize}; --h-margin: {btnHeight / 2}px; --hover-color: {hoverColor}; --disabled-color: {disabledColor}; {css}" on:click={click}>
+		 style="--button-height: {buttonHeight}; --bg-color: {bgColor}; --font-color: {color}; --radius: {radius}; --pulse-color: {pulseColor}; --font-size: {_fontSize}; --hover-color: {hoverColor}; --disabled-color: {disabledColor}; {css}" on:click={click}>
 	<div class="inner" style="--font-weight: {fontWeight}">
 		<slot></slot>
 	</div>
@@ -99,32 +98,29 @@
 
 <style>
 	.container {
-		display: flexbox;
+		display : inline-flex;
+		align-items : center;
+		justify-content: center;
 		height: var(--button-height);
-		align-items: center;
 		cursor: pointer;
 		background-color: var(--bg-color);
 		color: var(--font-color);
 		border-radius: var(--radius);
-		/**font-family: Arial, Helvetica, sans-serif;/**/
-		box-sizing: border-box;
-		border: solid 2px transparent
+		/**/box-sizing: border-box;/**/
+		/**/border: solid 2px transparent;/**/
 	}
 	
 	.inner {
-		margin-top: calc((var(--button-height) - var(--font-size)) / 2);
-		margin-bottom: calc((var(--button-height) - var(--font-size)) / 2);
-        margin-left: var(--h-margin);
-        margin-right: var(--h-margin);
 		font-size: var(--font-size);
 		font-weight: var(--font-weight);
-		line-height: 1.5;
-		display: inline-block;
+		padding: 0 var(--radius);
+		line-height: normal;
+		display: inline;
 	}
 
-    .container:hover {
-        background-color: var(--hover-color);
-    }
+	.container:hover {
+		background-color: var(--hover-color);
+	}
 		
 	.container:active {
 		border: solid 2px white;

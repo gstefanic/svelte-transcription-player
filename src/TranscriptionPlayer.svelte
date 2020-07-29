@@ -19,7 +19,7 @@
 
 	export let audio;
 	export let onEdited; // is is falsey then editing is disabled
-	// export let transcription;
+	export let transcription;
 
 	$: canEdit = isFunction(onEdited);
 
@@ -547,14 +547,14 @@
 		};
 	})();
 
-	// $: {
-	// 	const {valid, fixed, transcription: t} = _transcription.validate(transcription, {fix: true});
-	// 	if (valid || fixed) {
-	// 		transcriptionData = t;
-	// 	} else {
-	// 		// transcriptionData = [];
-	// 	}
-	// };
+	$: {
+		const {valid, fixed, transcription: t} = _transcription.validate(transcription, {fix: true});
+		if (valid || fixed) {
+			transcriptionData = t;
+		} else {
+			// transcriptionData = [];
+		}
+	};
 
 	let playerHeightInPx;
 
@@ -656,12 +656,12 @@
 				{#if canEdit}
 					{#if $editMode}
 					<div style="display: flex;">
-						<Button onclick={doneEditing} height={'100%'} fontWeight={400} colors={{'default': '#4353FF', loading: '#4353FF'}}>Done</Button>
-						<Button onclick={cancelEditing} height={'100%'} fontWeight={400} css={'margin-left: 0.5rem;'} colors={{'default': '#FF5757'}} disabled={doneEditingRunning}>Cancel</Button>
+						<Button onclick={doneEditing} height={'100%'} colors={{'default': '#4353FF', loading: '#4353FF'}}>Done</Button>
+						<Button onclick={cancelEditing} height={'100%'} css={'margin-left: 0.5rem;'} colors={{'default': '#FF5757'}} disabled={doneEditingRunning}>Cancel</Button>
 					</div>
 					{:else}
 					<div style="display: flex;">
-						<Button onclick={startEditing} height={'100%'} fontWeight={400} colors={{'default': '#4353FF'}}>Edit</Button>
+						<Button onclick={startEditing} height={'100%'} colors={{'default': '#4353FF'}}>Edit</Button>
 					</div>
 					{/if}
 				{/if}

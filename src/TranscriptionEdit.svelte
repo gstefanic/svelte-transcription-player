@@ -384,7 +384,7 @@
 </script>
 
 <div bind:offsetHeight={lineHeight} style="position: absolute; left: -1000; top: -1000; color: transparent;">&nbsp;</div>
-<div style="padding: 0.5rem;">
+<div style="padding: 0.5rem; box-sizing: border-box;">
 {#each transcription as section, sectionIndex}
 <Section highlight={isRegion(section)} {fontSize} {lineHeight} index={sectionIndex}
 	text={section.text} {containerWidth} color={section.color || regionColor}

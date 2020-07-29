@@ -10,23 +10,23 @@
 </script>
 
 <div
-  class="notification"
-  role="status"
-  aria-live="polite"
-  in:fade
-  out:fade
-  style="--background-color: {color}"
+	class="notification"
+	role="status"
+	aria-live="polite"
+	in:fade
+	out:fade
+	style="--background-color: {color}"
 >
-  <div class="content">
-    {text}
-  </div>
-  <button
-    class="button"
-    on:click={remove}
-    aria-label="delete notification"
-  >
-    &times;
-  </button>
+	<div class="content">
+		{text}
+	</div>
+	<button
+		class="button"
+		on:click={remove}
+		aria-label="delete notification"
+	>
+		&times;
+	</button>
 </div>
 
 
@@ -68,7 +68,7 @@
     }
 
     .content {
-        width: 210px;
+        width: 300px;
         padding: 6px 6px 6px 6px;
         box-sizing: border-box;
         word-wrap: break-word;

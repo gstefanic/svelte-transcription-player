@@ -190,9 +190,9 @@
 
     .container {
         position: relative;
-        margin: 0.5rem;
+        padding: 0.5rem;
         height: 100%;
-        /* background-color: aliceblue; */
+        box-sizing: border-box;
     }
 
 </style>

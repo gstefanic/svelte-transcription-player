@@ -102,7 +102,6 @@
             {/if}
         </div>
         <div>
-            <!-- <button on:click={_done} disabled={!(isValidText && (!beRegion || isValidStart && isValidEnd))}>Done</button> -->
             <Button onclick={_done} disabled={!(isValidText && (!beRegion || isValidStart && isValidEnd))} height={'100%'}>Done</Button>
         </div>
     </div>

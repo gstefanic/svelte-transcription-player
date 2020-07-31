@@ -134,7 +134,7 @@
 
     .content[placeholder]:empty:before {
         content: attr(placeholder);
-        color: #555; 
+        color: #555;
     }
 
     /* .content[placeholder]:empty:focus:before {

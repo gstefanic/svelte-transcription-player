@@ -123,7 +123,7 @@
     position: relative;
     width: 40rem;
     max-width: 100%;
-    max-height: 100%;
+    max-height: calc(100vh - 4rem);
     margin: 2rem auto;
     color: black;
     border-radius: 0.5rem;

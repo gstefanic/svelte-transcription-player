@@ -315,3 +315,117 @@ export function getOffsetPosition(evt, parent){
 
     return position;
 }
+
+function fallbackCopyTextToClipboard(text) {
+    var textArea = document.createElement("textarea");
+    textArea.value = text;
+    
+    // Avoid scrolling to bottom
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+  
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+  
+    try {
+      var successful = document.execCommand('copy');
+      var msg = successful ? 'successful' : 'unsuccessful';
+      console.log('Fallback: Copying text command was ' + msg);
+    } catch (err) {
+      console.error('Fallback: Oops, unable to copy', err);
+    }
+  
+    document.body.removeChild(textArea);
+};
+
+export function copyTextToClipboard(text) {
+    if (!navigator.clipboard) {
+        fallbackCopyTextToClipboard(text);
+        return;
+    }
+    navigator.clipboard.writeText(text).then(function() {
+        // console.log('Async: Copying to clipboard was successful!');
+    }, function(err) {
+        console.error('Async: Could not copy text: ', err);
+    });
+};
+
+export function download(content, fileName, contentType) {
+    let a = document.createElement("a");
+    let file = new Blob([content], {type: contentType});
+    a.href = URL.createObjectURL(file);
+    a.download = fileName;
+    a.click();
+};
+
+export async function chooseJsonFile() {
+    const extentions = ['.json'];
+
+    let input = document.createElement("input");
+    input.type = 'file';
+    input.style.display = 'none';
+    input.accept = extentions.join(', ');
+    document.body.appendChild(input);
+
+    return new Promise((resolve, reject) => {
+        input.onclick = () => {
+            let onFocus;
+            document.body.addEventListener('foucs', onFocus = () => {
+                document.body.removeEventListener('focus', onFocus);
+                input.remove();
+            });
+
+            input.onchange = event => {
+                const reader = new FileReader();
+                const url = event.target.value;
+                const ext = url.substring(url.lastIndexOf('.')).toLowerCase();
+                const files = event.target.files;
+                if (files && files[0]) {
+                    if (extentions && !extentions.includes(ext)) {
+                        reject();
+                        // throw new Error ('impl error');
+                    }
+        
+                    reader.onload = e => {
+                        const result = e.target.result;
+                        if (typeof result === 'string') {
+                            resolve(result);
+                        } else {
+                            reject();
+                        }
+                    };
+        
+                    reader.readAsText(files[0]);
+                } else {
+                    reject();
+                    throw new Error('impl error');
+                }
+            };
+        };
+
+        input.click();
+    });
+
+};
+
+export function prettyPrint(obj) {
+    const replacer = (match, pIndent, pKey, pVal, pEnd) => {
+        var key = '<span style="color: brown;">';
+        var val = '<span style="color: navy;">';
+        var str = '<span style="color: olive;">';
+        var r = pIndent || '';
+        if (pKey)
+           r = r + key + pKey.replace(/[": ]/g, '') + '</span>: ';
+        if (pVal)
+           r = r + (pVal[0] == '"' ? str : val) + pVal + '</span>';
+        return r + (pEnd || '');
+    };
+
+    const jsonLine = /^( *)("[\w]+": )?("[^"]*"|[\w.+-]*)?([,[{])?$/mg;
+    return JSON.stringify(obj, null, 3)
+       .replace(/&/g, '&amp;').replace(/\\"/g, '&quot;')
+       .replace(/</g, '&lt;').replace(/>/g, '&gt;')
+       .replace(jsonLine, replacer);
+};

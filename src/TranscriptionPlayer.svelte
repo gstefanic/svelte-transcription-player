@@ -11,11 +11,16 @@
 	import Button from './Button';
 	import { isFloat, toFixed, countWords, removeWhitespaces, formatTime, coordinatesOnPage, isFunction, textMetrics } from './utils';
 	import { contextKey, duration, minRegionDuration, editMode, activeIndex } from './store';
+	import ImportTranscription from './ImportTranscription';
+	import ExportTranscription from './ExportTranscription';
 
 	// Bindings
 	let addNotification, transcriptionContainerElement;
 	let openContextMenu, closeContextMenu;
 	let settingsButton;
+	let playerHeightInPx;
+	let container, containerWidth;
+	let openModal, closeModal;
 
 	export let audio;
 	export let onEdited; // is is falsey then editing is disabled
@@ -46,6 +51,24 @@
 	];
 	
 	const toVoid = () => {};
+
+	let importEnabled = true, exportEnabled = true;
+
+	const showExportView = () => {
+		openModal(
+			ExportTranscription, {
+				transcription: transcriptionData,
+			}
+		);
+	};
+
+	const showImportView = () => {
+		openModal(
+			ImportTranscription, {
+				onImport: t => loadArrayAsTranscription(t, { showNotifications: true }),
+			}
+		);
+	};
 
 	// Player Height
 	const playerHeights = {
@@ -445,11 +468,19 @@
 			{ name: 'Decrease', callback: decreaseFontSize, },
 			{ name: 'Increase', callback: increaseFontSize, },
 		]},
+		import: { name: 'Import', callback: showImportView },
+		export: { name: 'Export', callback: showExportView },
 	};
 
 	const populateSettings = params => Object.keys(params).filter(key => params[key] === true).map(key => allSettings[key]);
 
-	$: settings = populateSettings({autoplay: autoplayConfigurable, autoscroll: autoscrollConfigurable, font: fontConfigurable});
+	$: settings = populateSettings({
+		autoplay: autoplayConfigurable, 
+		autoscroll: autoscrollConfigurable,
+		import: importEnabled,
+		export: exportEnabled,
+		font: fontConfigurable,
+	});
 
 	const onSettingClicked = event => {
 		settingOpened = !settingOpened;
@@ -547,18 +578,79 @@
 		};
 	})();
 
-	$: {
-		const {valid, fixed, transcription: t} = _transcription.validate(transcription, {fix: true});
-		if (valid || fixed) {
-			transcriptionData = t;
+	// $: {
+	// 	const {valid, fixed, transcription: t} = _transcription.validate(transcription, {fix: true});
+	// 	if (valid || fixed) {
+	// 		transcriptionData = t;
+	// 	} else {
+	// 		// transcriptionData = [];
+	// 	}
+	// };
+
+	$: onTranscriptionChange(transcription);
+
+	const loadArrayAsTranscription = (arr, params) => {
+		const defaultParams = {
+			showNotifications: false,
+			initialize: false,
+		};
+
+		const { 
+			showNotifications, 
+			initialize 
+		} = params || defaultParams;
+
+		if (arr instanceof Array) {
+			const {valid, fixed, transcription: t} = _transcription.validate(arr, {fix: true, skipAssigment: true});
+			if (valid) {
+				if (fixed && showNotifications) {
+					addNotification({
+						text: 'Transcription was fixed automatically.',
+						duration: 2000,
+					});
+				}
+				if (showNotifications) {
+					addNotification({
+						text: 'Transcription was successfully loaded.',
+						duration: 2000,
+					});
+				}
+				transcriptionData = t;
+			} else {
+				if (initialize) {
+					transcriptionData = [];
+				}
+				if (showNotifications) {
+					addNotification({
+						text: 'Transcription not imported, due to invalid sections.',
+						color: '#FF5757',
+						duration: 5000,
+					});
+				}
+			}
 		} else {
-			// transcriptionData = [];
+			throw new Error('Impl error');
+		}
+	}
+
+	const onTranscriptionChange = () => {
+		if (transcription instanceof Array) {
+			loadArrayAsTranscription(transcription, { initialize: true });
+		} else if (typeof transcription === 'string') {
+			fetch(transcription)
+				  .then(response => response.json())
+				  .then(loadArrayAsTranscription)
+				  .catch(error => console.error('Error:', error));
+		} else if (transcription) {
+			addNotification({
+				text: 'Transcription could not be loaded.',
+				color: '#FF5757',
+				duration: 5000,
+			});
+		} else {
+			console.error('transcription error', transcription);
 		}
 	};
-
-	let playerHeightInPx;
-
-	let container, containerWidth;
 
 </script>
 
@@ -633,7 +725,7 @@
 
 <div bind:this={container} bind:offsetWidth={containerWidth} class="container" style="--player-height: {_playerHeight}px">
 	<ContextMenu contentContainer={container} bind:open={openContextMenu} bind:close={closeContextMenu}>
-		<SimpleModal>
+		<SimpleModal bind:open={openModal} bind:close={closeModal}>
 			<div class="player-container">
 				<WavesurferPlayer 
 					url={audio} 

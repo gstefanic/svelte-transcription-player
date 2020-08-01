@@ -1,6 +1,8 @@
 .DS_Store
 node_modules
 public/bundle.*
+public/index.js
+public/storybook
 dist
 package-lock.json
 yarn.lock

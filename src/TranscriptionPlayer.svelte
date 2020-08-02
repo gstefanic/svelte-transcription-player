@@ -23,36 +23,16 @@
 	let openModal, closeModal;
 
 	export let audio;
-	export let onEdited; // is is falsey then editing is disabled
+	export let onEdited; // if not a function then editing is disabled
 	export let transcription;
 
 	$: canEdit = isFunction(onEdited);
 
-	let transcriptionData = [
-		{ text: "The snow glows white on the mountain tonight.", start: 13.79, end: 17 },
-		{ text: "Not a footprint to be seen.", start: 17.36, end: 20 },
-		{ text: "A kingdom of isolation.", start: 21.01, end: 23.94 },
-		{ text: "And it looks like I'm the queen.", start: 24.23, end: 27.15 },
-		{ text: "The wind is howling like this swirling storm inside.", start: 28.86, end: 35 },
-		{ text: "Couldn't keep it in, Heaven knows I tried.", start: 35.65, end: 41.15 },
-		{ text: "Don't let them in, don't let them see.", start: 42.47, end: 45.98 },
-		{ text: "Be the good girl you always have to be.", start: 45.98, end: 49.41 },
-		{ text: "Conceal, don't feel, don't let them", start: 49.41, end: 52.65 },
-		{ text: "know", start: 52.65, end: 55.89 },
-		{ text: "Well, now they know.", start: 55.89, end: 59.22 },
-		{ text: "Let it go, let it go.", },// start: 59.22, end: 62.76 },
-		{ text: "Can't hold it back anymore.", start: 62.76, end: 66.32 },
-		{ text: "Let it go, let it go.", },// start: 66.32, end: 69.73 },
-		{ text: "Turn away and slam the door.", start: 69.73, end: 73.49 },
-		{ text: "I don't care.", },// start: 73.49, end: 76.26 },
-		{ text: "what they're going to say.", start: 76.26, end: 79.83 },
-		{ text: "Let the storm rage on.", start: 80.4, end: 84.43,  },
-		{ text: "The cold never bothered me anyway.", },// start: 84.43, end: 87.26,  },
-	];
+	let transcriptionData = [];
 	
 	const toVoid = () => {};
 
-	let importEnabled = true, exportEnabled = true;
+	export let importEnabled = false, exportEnabled = false;
 
 	const showExportView = () => {
 		openModal(
@@ -578,15 +558,6 @@
 		};
 	})();
 
-	// $: {
-	// 	const {valid, fixed, transcription: t} = _transcription.validate(transcription, {fix: true});
-	// 	if (valid || fixed) {
-	// 		transcriptionData = t;
-	// 	} else {
-	// 		// transcriptionData = [];
-	// 	}
-	// };
-
 	$: onTranscriptionChange(transcription);
 
 	const loadArrayAsTranscription = (arr, params) => {
@@ -656,13 +627,15 @@
 
 <style>
 	.container {
+		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+		color: #333;
 		position: relative;
 		user-select: none;
         -webkit-touch-callout: none;
         -webkit-user-select: none;
         -khtml-user-select: none;
         -moz-user-select: none;
-        -ms-user-select: none;
+		-ms-user-select: none;
 
 		height: 100%;
 		max-height: inherit;
@@ -678,10 +651,11 @@
 		flex: 0 0 32px;
 		display: flex;
 		align-items: center;
-		margin: 0.25rem 0;
+		margin-top: 0.25rem;
 	}
 
 	.transcription-container {
+		margin-top: 0.25rem;
 		position: relative;
 		flex: 1 1 auto;
 		overflow: auto;
@@ -712,12 +686,8 @@
     }
 
 	.settings {
-		background-image: url('./images/settings-24px.svg');
-        background-repeat: no-repeat;
-        background-position: center;
-        background-size: 80% 80%;
-		height: 2rem; 
-		width: 2rem;
+		height: 24px; 
+		width: 24px;
 		display: inline-block;
 		cursor: pointer;
 	}
@@ -759,7 +729,9 @@
 				{/if}
 
 				{#if settings.length}
-				<span class="settings" bind:this={settingsButton} on:click={onSettingClicked}></span>
+				<div class="settings" bind:this={settingsButton} on:click={onSettingClicked}>
+					<svg xmlns="http://www.w3.org/2000/svg" enable-background="new 0 0 24 24" height="24" viewBox="0 0 24 24" width="24"><g><path d="M0,0h24v24H0V0z" fill="none"/><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></g></svg>
+				</div>
 				{/if}
 			</div>
 			{/if}

@@ -29,9 +29,13 @@
     "webpack-dev-server": "^3.3.1"
   },
   "scripts": {
-    "build": "npm run build-app && npm run build-storybook",
-    "build-app": "cross-env NODE_ENV=production webpack",
-    "build-storybook": "build-storybook -c .storybook -o public/storybook",
+    "build": "npm run build:app && npm run build:storybook",
+    "clean:app": "node npm-scripts/remove.js -s public/example -d public -i index.html && rm -rf public/example",
+    "build:app": "npm run clean:app && cross-env NODE_ENV=production webpack && npm run postbuild:app",
+    "postbuild:app": "node npm-scripts/copy.js -s .example -d public/example && node npm-scripts/copy.js -s public/example -i index.html",
+    "clean:storybook": "node npm-scripts/remove.js -s public/storybook -d public -i index.html && rm -rf public/storybook",
+    "build:storybook": "npm run clean:storybook && build-storybook -c .storybook -o public/storybook && npm run postbuild:storybook",
+    "postbuild:storybook": "node npm-scripts/copy.js -s public/storybook -i index.html",
     "dev": "webpack-dev-server --content-base public",
     "storybook": "start-storybook -p 6006"
   },

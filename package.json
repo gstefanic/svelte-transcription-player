@@ -6,7 +6,9 @@
     "@babel/plugin-transform-runtime": "^7.10.4",
     "@babel/preset-env": "^7.10.4",
     "@storybook/addon-actions": "^5.3.19",
+    "@storybook/addon-knobs": "^5.3.19",
     "@storybook/addon-links": "^5.3.19",
+    "@storybook/addon-viewport": "^5.3.19",
     "@storybook/addons": "^5.3.19",
     "@storybook/svelte": "^5.3.19",
     "babel-loader": "^8.1.0",
@@ -29,7 +31,8 @@
     "webpack-dev-server": "^3.3.1"
   },
   "scripts": {
-    "build": "npm run build:app && npm run build:storybook",
+    "clean": "rm -rf public",
+    "build": "npm run clean && npm run build:app && npm run build:storybook",
     "clean:app": "node npm-scripts/remove.js -s public/example -d public -i index.html && rm -rf public/example",
     "build:app": "npm run clean:app && cross-env NODE_ENV=production webpack && npm run postbuild:app",
     "postbuild:app": "node npm-scripts/copy.js -s .example -d public/example && node npm-scripts/copy.js -s public/example -i index.html",

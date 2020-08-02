@@ -82,5 +82,5 @@ module.exports = {
 	devtool: prod ? false: 'source-map',
 	devServer: {
         disableHostCheck: true,
-    }
+	},
 };

@@ -644,7 +644,7 @@
 	}
 
 	.player-container {
-		flex: 0 0 80px;
+		flex: 0 0 50px;
 	}
 
 	.toolbar-container {

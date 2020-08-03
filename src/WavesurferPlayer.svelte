@@ -116,7 +116,6 @@
     /* Play pause when var store changes */
     $: setPlaying($playing);
     $: if (!playEnabled) $playing = false;
-    // const setPlaying = play => play ? wavesurfer && wavesurfer.play() : wavesurfer && wavesurfer.pause();
 
     const setPlaying = play => {
         if ($editMode) {
@@ -177,7 +176,6 @@
     $: maxPxPerSec = minPxPerSec * 20;
 
     /* Change width of wavesurfer on window resize */
-    // $: wavesurferWidth && ready && zoom();
     $: wavesurferWidth && state === states.OK && zoom();
 
     onMount(async () => {
@@ -538,6 +536,7 @@
         z-index: 10;
         left: var(--cursor-left)
     }
+
     .container {
         position: relative;
         display: flex;
@@ -553,7 +552,6 @@
 
         background-color: var(--background-color);
         border-radius: 0.5rem;
-        /* margin-left: 8px; */
     }
 
     .wavesurfer {
@@ -562,7 +560,6 @@
         position: relative;
         background-color: var(--background-color);
         border-radius: 0.5rem;
-        /* margin-left: 8px; */
     }
 
     .interactable {

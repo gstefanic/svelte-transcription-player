@@ -19,13 +19,11 @@
     let enterPressed;
     const on = {
         blur: () => {
-            // console.log('on:blur', start, end);
             start = toFixed(start, 2);
             end = toFixed(end, 2);
             dispatch('blur');
         },
         focus: () => {
-            // console.log('on:focus')
             dispatch('focus');
         },
     };

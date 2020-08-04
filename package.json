@@ -32,15 +32,17 @@
   },
   "scripts": {
     "clean": "rm -rf public",
-    "build": "npm run clean && npm run build:app && npm run build:storybook",
-    "clean:app": "node npm-scripts/remove.js -s public/example -d public -i index.html && rm -rf public/example",
-    "build:app": "npm run clean:app && cross-env NODE_ENV=production webpack && npm run postbuild:app",
-    "postbuild:app": "node npm-scripts/copy.js -s .example -d public/example && node npm-scripts/copy.js -s public/example -i index.html",
+    "clean:example": "node npm-scripts/remove.js -s public/example -d public -i index.html && rm -rf public/example",
     "clean:storybook": "node npm-scripts/remove.js -s public/storybook -d public -i index.html && rm -rf public/storybook",
-    "build:storybook": "npm run clean:storybook && build-storybook -c .storybook -o public/storybook && npm run postbuild:storybook",
-    "postbuild:storybook": "node npm-scripts/copy.js -s public/storybook -i index.html",
-    "dev": "npm run postbuild:app && webpack-dev-server --content-base public",
-    "storybook": "start-storybook -p 6006"
+    "build:all": "npm run clean && npm run build:example && npm run build:storybook",
+    "build:example": "npm run clean:example && npm run build && npm run example",
+    "build:storybook": "npm run clean:storybook && npm run build && npm run storybook",
+    "build": "cross-env NODE_ENV=production webpack",
+    "example": "node npm-scripts/copy.js -s .example -d public/example && node npm-scripts/copy.js -s public/example -i index.html",
+    "storybook": "npm run clean:storybook && build-storybook -c .storybook -o public/storybook && npm run storybook:post",
+    "storybook:post": "node npm-scripts/copy.js -s public/storybook -i index.html",
+    "dev": "npm run example && webpack-dev-server --content-base public",
+    "dev:storybook": "start-storybook -p 6006"
   },
   "dependencies": {
     "@babel/runtime": "^7.10.4"

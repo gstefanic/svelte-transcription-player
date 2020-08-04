@@ -86,6 +86,43 @@ This chapter describes component parameters and their default values.
 | `regionColor` | `string` | `"#7F7FFF"` | Color of regions in edit view. |
 | `onEdited` | `function` | `undefined` | Callback that is invoked when _done_ button is clicked. Editing is `enabled` if `onEdited` is function. `onEdited(transcription: array, approve: function, decline: function)` |
 
+`onEdited` callback receives three parameters. The first parameter is transcription array. If transcription was successfully updated on the server side, `approve` callback should be called. If server changes transcription changed transcription can be passed to `approve` callback. `decline` callback should be called if server refused update.
+
+```javascript
+/* Example of onEdited function */
+async function onEdited(transcription, approve, decline) {
+    const {success, transcription: serverResponse} = await updateOnServer(transcription);
+    if (success) {
+        approve(serverResponse);
+    } else {
+        decline();
+    }
+}
+```
+
+## Transcription format
+
+Transcription (imported via `transcription` propetry) must be an array or JSON file containing an 
+array of objects that each contain text and timestamps.
+
+Transcription line object supprts the following key value pairs:
+- `text`: (required, `string`) a section of transcription.
+- `start`: (optional, `number`) positive real number that marks the start of current section (in seconds).
+- `end`: (optional, `number`) positive real number that marks the end of current section (in seconds).
+- `color`: (optional, `string`) color of region.
+
+```JSON
+[
+    {
+        "text": "The snow glows white on the mountain tonight",
+        "start": 13,
+        "end": 17,
+        "color": "#7F7FFF"
+    }
+]
+```
+
+
 # Develop
 
 First fork, clone, or simply download project and install dependencies as described [above](#installation).

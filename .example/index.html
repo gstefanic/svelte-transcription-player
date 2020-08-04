@@ -29,7 +29,6 @@
 					audio: audio,
 					transcription: transcription,
 					onEdited: (transcription, approve, decline) => {
-						console.log();
 						setTimeout((Math.random() < 0.5 ? approve : approve), 1000 + Math.random() * 2000)
 					},
 					fontConfigurable: true,

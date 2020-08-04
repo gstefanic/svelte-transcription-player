@@ -103,8 +103,6 @@
         handleSide = side;
         targets = getTargets(side, sectionIndex);
 
-        // log('handleDown', {targets});
-
         targetsByRows = targets.reduce( ([row, ...rest], target) => {
             if (!row) {
                 return [[target], ...rest];
@@ -151,11 +149,6 @@
             throw new Error('implementation error', {rowIndex, X0, Y0, targetsByRows, originWordElement });
         }
 
-        // split targets into rows
-        // log(targets);
-        // log('targetsByRows', targetsByRows);
-        // log('rowIndex', rowIndex, Y0);
-        // log({originWordElement});
     };
 
     const handleMove = event => {

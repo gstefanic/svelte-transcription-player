@@ -1,5 +1,5 @@
 <script>
-    import { onMount, createEventDispatcher, tick } from 'svelte';
+    import { createEventDispatcher, tick } from 'svelte';
     import RegionHandle from './RegionHandle';
     import TimeRangeInput from './TimeRangeInput';
     import Blur from './Blur';
@@ -71,11 +71,6 @@
             return () => intrct.unset();
         }
     };
-
-    onMount(async () => {
-        // console.log(`onMount region start: ${start}, end: ${end}, min: ${min}, maxStart: ${maxStart}, minEnd: ${minEnd}, max: ${max}`);
-        // console.log('onMount region', start, end, pxPerSec, scrollLeft, width, offsetLeft);
-    });
 
     const isValidStart = value => {
         return min <= value && value <= maxStart

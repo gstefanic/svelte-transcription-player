@@ -371,11 +371,12 @@ export async function chooseJsonFile() {
 
     return new Promise((resolve, reject) => {
         input.onclick = () => {
-            let onFocus;
-            document.body.addEventListener('foucs', onFocus = () => {
-                document.body.removeEventListener('focus', onFocus);
+
+            document.body.onfocus = () => {
+                document.body.onfocus = null;
                 input.remove();
-            });
+                setTimeout(resolve, 200);
+            };
 
             input.onchange = event => {
                 const reader = new FileReader();

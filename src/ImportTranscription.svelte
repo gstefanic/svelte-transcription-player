@@ -44,7 +44,9 @@
     const onUploadFileClick = async () => {
         try {
             const result = await chooseJsonFile();
-            transcriptionText = result;
+            if (result) {
+                transcriptionText = result;
+            }
         } catch (error) {
             addNotification({
                 text: 'Invalid file type. Only JSON files are supported.',

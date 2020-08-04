@@ -234,6 +234,7 @@
 	} */
 
     .buttons {
+        height: 25px;
         display: flex;
         justify-content: space-between;
     }

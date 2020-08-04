@@ -135,9 +135,7 @@
 
 	.container.disabled {
 		border: solid 2px transparent;
-		/* background-color: var(--disabled-color); */
-		background-color: var(--bg-color);
-		opacity: 0.4;
+		background-color: var(--disabled-color);
 		cursor: default;
 	}
 	

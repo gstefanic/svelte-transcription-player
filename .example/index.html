@@ -15,22 +15,14 @@
 	
 </head>
 <style>
-	#my-component {
-		/* max-height: 50vh; */
-	}
 </style>
 <body>
-	<div id="my-component"
-		data-audio="./demo.mp3"
-		data-transcription="./demo.json">
-	</div>
-
     <script>
-        document.addEventListener("DOMContentLoaded", function (event) {
+		document.addEventListener("DOMContentLoaded", function (event) {
 			const target = document.getElementById("my-component");
 			const audio = target.dataset.audio;
 			const transcription = target.dataset.transcription;
-
+	
 			var tp = new TranscriptionPlayer({
 				target: target,
 				props: {
@@ -47,9 +39,13 @@
 					exportEnabled: true,
 				},
 			});
-
-			console.log(tp);
         });
-    </script>
+	</script>
+	
+	<div id="my-component"
+		data-audio="./demo.mp3"
+		data-transcription="./demo.json">
+	</div>
+
 </body>
 </html>

@@ -39,7 +39,7 @@
     "clean:storybook": "node npm-scripts/remove.js -s public/storybook -d public -i index.html && rm -rf public/storybook",
     "build:storybook": "npm run clean:storybook && build-storybook -c .storybook -o public/storybook && npm run postbuild:storybook",
     "postbuild:storybook": "node npm-scripts/copy.js -s public/storybook -i index.html",
-    "dev": "webpack-dev-server --content-base public",
+    "dev": "npm run postbuild:app && webpack-dev-server --content-base public",
     "storybook": "start-storybook -p 6006"
   },
   "dependencies": {

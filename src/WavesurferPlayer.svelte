@@ -6,7 +6,7 @@
     import { onMount, onDestroy, tick, getContext } from 'svelte';
     import { fade } from 'svelte/transition';
     import { time, playing, duration, activeIndex, minRegionDuration, contextKey, editMode } from './store';
-    import { coordinatesInElement, coordinatesOnPage, toFixed, formatTime, whoosh, whooshBackground } from './utils';
+    import { coordinatesInElement, coordinatesOnPage, toFixed, formatTime, whoosh, whooshBackground, disableScroll } from './utils';
     import interact from 'interactjs';
     import { default as Color } from 'color';
 
@@ -196,6 +196,7 @@
             hideScrollbar: true,
             autoCenter: false,
             interact: false,
+            normalize: true,
         });
 
         wavesurfer.on('audioprocess', currentTime => $time = currentTime);
@@ -467,7 +468,8 @@
         bind:clientHeight={heightInPx}
         on:mousemove={wavesurferMousemove}
         on:mouseleave={wavesurferMouseleave}
-        on:wheel={wheelHandler} >
+        on:wheel={wheelHandler} 
+        use:disableScroll>
 
         {#if state === states.EMPTY || state === states.ERROR}
         <div class="error-message">

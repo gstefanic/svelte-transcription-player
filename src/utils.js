@@ -183,6 +183,12 @@ export function disableScroll(node = window) {
     node.addEventListener(wheelEvent, preventDefault, wheelOpt); // modern desktop
     node.addEventListener('touchmove', preventDefault, wheelOpt); // mobile
     node.addEventListener('keydown', preventDefaultForScrollKeys, false);
+
+    return {
+        destroy() {
+            enableScroll(node);
+        },
+    };
 };
 
 export function enableScroll(node = window) {

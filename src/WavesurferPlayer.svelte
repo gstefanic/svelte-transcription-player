@@ -5,7 +5,7 @@
     import Blur from './Blur';
     import { onMount, onDestroy, tick, getContext } from 'svelte';
     import { fade } from 'svelte/transition';
-    import { time, playing, duration, activeIndex, minRegionDuration, contextKey, editMode } from './store';
+    import { time, playing, duration, activeIndex, minRegionDuration, contextKey, editMode, PrimaryColor, SecondaryColor, BackgroundColor, RegionColor, Autoplay } from './store';
     import { coordinatesInElement, coordinatesOnPage, toFixed, formatTime, whoosh, whooshBackground, disableScroll } from './utils';
     import interact from 'interactjs';
     import { default as Color } from 'color';
@@ -17,15 +17,9 @@
     export let playEnabled = true;
     export let regions;
     export let displayRegions = false;
-    export let autoplay = true;
     export let height = 80;
-    export let regionColor = '#7F7FFF';
-    export let secondaryColor = '#D9DCFF';
-    export let primaryColor = '#4353FF';
-    export let backgroundColor = '#F0F8FF';
     export let heightInPx;
     
-
     const states = {
         OK: 'ok',
         LOADING: 'loading',
@@ -186,8 +180,8 @@
             fillParent: true,
             scrollParent: false,
             backend: 'MediaElement',
-            waveColor: secondaryColor,
-            progressColor: primaryColor,
+            waveColor: $SecondaryColor,
+            progressColor: $PrimaryColor,
             cursorColor: 'transparent',
             barWidth: 3,
             barRadius: 3,
@@ -339,7 +333,7 @@
         }
         zoomOnRegion(index);
         await tick();
-        $playing = autoplay;
+        $playing = $Autoplay;
     };
 
     $: zoomOnRegion($activeIndex);
@@ -444,7 +438,7 @@
 
 </script>
 
-<div class="container" style="--wavesurfer-height: {height}px; --background-color: {backgroundColor}; --primary-color: {primaryColor}; --secondary-color: {secondaryColor};">
+<div class="container" style="--wavesurfer-height: {height}px; --background-color: {$BackgroundColor}; --primary-color: {$PrimaryColor}; --secondary-color: {$SecondaryColor};">
     <div class="playPauseButtonContainer">
         {#if $playing}
         <div class="playPauseButton paused" class:disabled={!playEnabled} on:click={togglePlaying}>
@@ -485,13 +479,13 @@
             index={i}
             min={getMin(i, $minRegionDuration)}
             max={getMax(i, $minRegionDuration)}
-            color={region.color || regionColor}
             pxPerSec={curPxPerSec} 
             wavesurferWidth={wavesurferWidth} 
             scrollLeft={scrollLeft}
             on:resized={regionResized(i)}
             resizable={$activeIndex === i && (zoomPercent >= 90 || (region.end - region.start) * curPxPerSec > 30)}
             on:please-rezoom={() => zoomOnRegion(i)}
+            color={region.color || $RegionColor}
         />
         {/if}
         {/each}

@@ -6,13 +6,13 @@
     import { isFloat } from './utils';
     import interact from 'interactjs';
     import { toFixed } from './utils';
-    import { playing, duration, activeIndex, minRegionDuration } from './store';
+    import { playing, duration, activeIndex, minRegionDuration, RegionColor } from './store';
     var Color = require('color');
 
     export let start, end;
     export let min, max;
     export let index;
-    export let color = '#7F7FFF';
+    export let color = $RegionColor;
     export let pxPerSec;
     export let scrollLeft;
     export let resizable;

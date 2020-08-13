@@ -5,14 +5,15 @@
     import ContextMenu from './ContextMenu';
 	import WavesurferPlayer from './WavesurferPlayer';
 	import TranscriptionView from './TranscriptionView';
-	import LineView from './LineView';
-	import ParagraphView from './ParagraphView';
+	import Transcription from './Transcription';
 	import TranscriptionEdit from './TranscriptionEdit';
 	import Resizable from './Resizable';
 	import Notifications from './Notifications';
 	import Button from './Button';
 	import { isFloat, toFixed, countWords, removeWhitespaces, formatTime, coordinatesOnPage, isFunction, textMetrics } from './utils';
-	import { contextKey, duration, minRegionDuration, editMode, activeIndex } from './store';
+	import { contextKey, duration, minRegionDuration, editMode, activeIndex, 
+		PrimaryColor, SecondaryColor, BackgroundColor, RegionColor, ShowParagraphNumbers, Autoplay, FontSizePx
+	} from './store';
 	import ImportTranscription from './ImportTranscription';
 	import ExportTranscription from './ExportTranscription';
 
@@ -27,7 +28,14 @@
 	export let audio;
 	export let onEdited; // if not a function then editing is disabled
 	export let transcription;
-	export let songMode = true;
+	export let showParagraphNumbers = false;
+
+	$: $PrimaryColor = primaryColor;
+	$: $SecondaryColor = secondaryColor;
+	$: $BackgroundColor = backgroundColor;
+	$: $RegionColor = regionColor;
+	$: $ShowParagraphNumbers = showParagraphNumbers === true;
+	$: $Autoplay = autoplay;
 
 	$: canEdit = isFunction(onEdited);
 
@@ -89,8 +97,7 @@
 		return css => textMetrics('A', e).height;
 	})();
 
-	let fontSize;
-	$: tick().then(() => fontSize = textMetrics('A', transcriptionContainerElement, {'line-height': 1}, fontStep, minFontSize, maxFontSize, baseFontSize, fontStepAmount).height);
+	$: tick().then(() => $FontSizePx = textMetrics('A', transcriptionContainerElement, {'line-height': 1}, fontStep, minFontSize, maxFontSize, baseFontSize, fontStepAmount).height);
 	let fontStep = 0;
 	export let fontStepAmount = '0.25rem';
 	export let baseFontSize = '1.5rem';
@@ -707,12 +714,7 @@
 					moveEnabled={$editMode} 
 					playEnabled={!$editMode || true} 
 					bind:regions={transcriptionData}
-					bind:autoplay
 					displayRegions={$editMode}
-					{regionColor}
-					{backgroundColor}
-					{primaryColor}
-					{secondaryColor}
 					height={_playerHeight}
 				/>
 			</div>
@@ -741,11 +743,7 @@
 			<div bind:this={transcriptionContainerElement} class="transcription-container" style="--line-height: {lineHeight}; --min-font-size: {minFontSize}; --max-font-size: {maxFontSize}; --base-font-size: {baseFontSize}; --font-step-amount: {fontStepAmount}; --font-step: {fontStep}; --background-color: {backgroundColor}">
 				<Notifications bind:addNotification={addNotification}>
 					<Resizable {backgroundColor} container={transcriptionContainerElement} {containerWidth} {autoscroll}>
-						{#if $editMode}
-						<TranscriptionEdit bind:transcription={transcriptionData} {fontSize} {regionColor} {songMode}/>
-						{:else}
-						<TranscriptionView transcription={transcriptionData} {fontSize} progressColor={secondaryColor} {songMode}/>
-						{/if}
+						<Transcription bind:transcription={transcriptionData}/>
 					</Resizable>
 				</Notifications>
 			</div>

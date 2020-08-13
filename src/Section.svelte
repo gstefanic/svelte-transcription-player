@@ -1,5 +1,5 @@
 <script>
-    import { onMount, getContext, tick, createEventDispatcher } from 'svelte';
+    import { onMount, getContext, tick, createEventDispatcher, FontSizePx } from 'svelte';
     import { Iterator, getOffsetPosition, textMetrics } from './utils';
     import interact from 'interactjs';
     import { default as Color } from 'color';
@@ -12,7 +12,6 @@
     export let container;
     export let containerWidth;
     export let sectionIndex;
-    export let fontSize;
     export let lineHeight;
     export let padding = 'normal';
     export let color = '#7F7FFF';
@@ -29,7 +28,7 @@
     };
 
     $: fontSizeInPx = Math.min(
-        textMetrics('A', container, {'line-height': padding}, fontSize, lineHeight).height, 
+        textMetrics('A', container, {'line-height': padding}, $FontSizePx, lineHeight).height, 
         textMetrics('A', container).height
     );
 
@@ -78,7 +77,7 @@
 
     $: words = text.split(' ');
 
-    $: parts = getParts(wordElements, containerWidth, fontSize, lineHeight);
+    $: parts = getParts(wordElements, containerWidth, fontSizeInPx, lineHeight);
 
     let targets, targetsByRows, handleSide, X0, Y0, snapElement, originWordElement, resetHandleDown;
 
@@ -125,7 +124,8 @@
         const rowIndex = targetsByRows.findIndex(([{offsetTop, offsetHeight}]) => offsetTop <= Y0 && Y0 < (offsetTop + offsetHeight));
 
         if (rowIndex < 0 || rowIndex >= targetsByRows.length) {
-            throw new Error('implementation error, row index out of bounds', rowIndex);
+            console.log({rowIndex, targetsByRows});
+            throw new Error('implementation error, row index out of bounds');
         }
 
         // get the nearest word element in row

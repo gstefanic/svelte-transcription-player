@@ -1,18 +1,17 @@
 <script>
 	import { onMount, createEventDispatcher, getContext, setContext, tick } from 'svelte';
-	import { activeIndex, duration, minRegionDuration, contextKey, playing } from './store';
+	import { activeIndex, duration, minRegionDuration, contextKey, playing, RegionColor } from './store';
 	import interact from 'interactjs';
 	import NewInput from './NewInput';
 	import EditSectionInfo from './EditSectionInfo';
 	import { countWords, removeWhitespaces, isFloat, toFixed } from './utils';
-	// import { highlightable } from './highlightable';
 	import Section from './Section';
 
 	const log = console.log;
 
 	export let transcription;
-	export let fontSize;
-	export let regionColor = '#7F7FFF';
+	export let offset;
+	export let length;
 
 	const { 
 		isRegion, 
@@ -30,7 +29,7 @@
 		getColor,
 	} = getContext(contextKey);
 
-	const { getContainer, shouldBeVisible, on: resizableOn, off: resizableOff } = getContext('resizable');
+	const { getContainer, on: resizableOn, off: resizableOff } = getContext('resizable');
 	const { open: openModal, close: closeModal } = getContext('simple-modal');
 	const { open: openContextMenu, close: closeContextMenu } = getContext('simple-context-menu');
 	const dispatch = createEventDispatcher();
@@ -38,7 +37,7 @@
 	let container, containerWidth;
 
 	onMount(async () => {
-		container = getContainer();
+		// container = getContainer();
 		const oldPositioning = container.style.position;
 		container.style.position = 'relative';
 
@@ -57,33 +56,26 @@
 		}
 	});
 
-	$: scrollToRegion($activeIndex);
-	const scrollToRegion = (sectionIndex) => {
-		if (sectionIndex < wordElementsBySection.length && isRegion(sectionIndex)) {
-			const wordElement = wordElementsBySection[sectionIndex][0];
-			const lastWordElement = wordElementsBySection[sectionIndex][wordElementsBySection[sectionIndex].length - 1];
-			if (wordElement && lastWordElement) {
-				shouldBeVisible({top: wordElement.offsetTop, bottom: lastWordElement.offsetTop + lastWordElement.offsetHeight});
-			}
-		}
-	};
-
 	let wordElementsBySection = [];
 
 	$: wordElements = wordElementsBySection.flat().filter(e => e instanceof HTMLElement);
 
 	setContext('sections', {
 		getTargets: (side, index) => {
-			if (wordElementsBySection && (index < 0 || index >= wordElementsBySection.length)) {
+			if (wordElementsBySection && (index < 0 + offset || index - offset >= wordElementsBySection.length)) {
 				throw new Error('implementation error');
 			}
+			const min = offset;
+			const max = offset + length;
+
 			if (side === 'left') {
 				const { index: prevRegionIndex } = getPrevRegion(index, transcription);
-				return wordElementsBySection.slice(prevRegionIndex + 1, index + 1).flat().filter(e => e instanceof HTMLElement);
+				const startIndex = Math.max(0, prevRegionIndex + 1);
+				return wordElementsBySection.slice(startIndex, index + 1).flat().filter(e => e instanceof HTMLElement);
 			} else if (side === 'right') {
 				const { index: nextRegionIndex } = getNextRegion(index);
-				const endIndex = nextRegionIndex === -1 ? wordElementsBySection.length : nextRegionIndex;
-				return wordElementsBySection.slice(index, endIndex).flat().filter(e => e instanceof HTMLElement);
+				const endIndex = nextRegionIndex === -1 ? wordElementsBySection.length : nextRegionIndex - offset;
+				return wordElementsBySection.slice(index - offset, offset + endIndex).flat().filter(e => e instanceof HTMLElement);
 			}
 			throw new Error('implementation error');
 		},
@@ -92,6 +84,7 @@
 
 	const resize = sectionIndex => ({detail: {side, diff}}) => {
 		if (!isRegion(sectionIndex, transcription)) {
+			console.log({sectionIndex, offset, length, side, diff});
 			throw new Error('implementation error');
 		}
 		const t = transcription;
@@ -103,8 +96,11 @@
 				const out = sectionWords.slice(0, -diff).join(' ');
 				const inside = sectionWords.slice(-diff).join(' ');
 				t[sectionIndex].text = inside;
-				if (sectionIndex === 0 || isRegion(sectionIndex - 1, transcription)) {
-					t.splice(sectionIndex, 0, { text: out });
+				if (sectionIndex === offset || isRegion(sectionIndex - 1, transcription)) {
+					t.splice(sectionIndex, 0, { text: out, params: t[sectionIndex].params });
+					if (sectionIndex === offset) {
+						delete t[sectionIndex + 1].params;
+					}
 				} else {
 					t[sectionIndex - 1].text += ' ' + out;
 				}
@@ -122,6 +118,7 @@
 
 					t[sectionIndex].text = inside + ' ' + t[sectionIndex].text;
 					if (diff === prevSectionWords.length) {
+						t[sectionIndex].params = t[sectionIndex - 1].params;
 						t.splice(sectionIndex - 1, 1);
 					} else {
 						t[sectionIndex - 1].text = out;
@@ -150,8 +147,8 @@
 				const inside = sectionWords.slice(0, sectionWords.length - diff).join(' ');
 				const out = sectionWords.slice(-diff).join(' ');
 				t[sectionIndex].text = inside;
-				if (sectionIndex === transcription.length - 1 || isRegion(sectionIndex + 1, transcription)) {
-					t.splice(sectionIndex + 1, 0, { text: out});
+				if (sectionIndex === offset + length - 1 || sectionIndex === transcription.length - 1 || isRegion(sectionIndex + 1, transcription)) {
+					t.splice(sectionIndex + 1, 0, { text: out });
 				} else {
 					t[sectionIndex + 1].text = out + ' ' + t[sectionIndex + 1].text;
 				}
@@ -384,10 +381,11 @@
 </script>
 
 <div bind:offsetHeight={lineHeight} style="position: absolute; left: -1000; top: -1000; color: transparent;">&nbsp;</div>
-<div style="padding: 0.5rem; box-sizing: border-box;">
+<div bind:this={container} style="padding: 0.0rem; box-sizing: border-box;">
 {#each transcription as section, sectionIndex}
-<Section highlight={isRegion(section)} {fontSize} {lineHeight} index={sectionIndex}
-	text={section.text} {containerWidth} color={section.color || regionColor}
+{#if sectionIndex >= offset && sectionIndex < offset + length}
+<Section highlight={isRegion(section)} {lineHeight} index={sectionIndex}
+	text={section.text} {containerWidth} color={section.color || $RegionColor}
 	bind:wordElements={wordElementsBySection[sectionIndex]} 
 	resizable={sectionIndex === $activeIndex} {sectionIndex} {container}
 	on:resize={resize(sectionIndex)}
@@ -396,6 +394,7 @@
 	on:word-click={on.word.click(sectionIndex)}
 	on:word-hold={on.word.hold(sectionIndex)}
 />
+{/if}
 {/each}
 </div>
 

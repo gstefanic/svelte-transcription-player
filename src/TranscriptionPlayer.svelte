@@ -5,6 +5,8 @@
     import ContextMenu from './ContextMenu';
 	import WavesurferPlayer from './WavesurferPlayer';
 	import TranscriptionView from './TranscriptionView';
+	import LineView from './LineView';
+	import ParagraphView from './ParagraphView';
 	import TranscriptionEdit from './TranscriptionEdit';
 	import Resizable from './Resizable';
 	import Notifications from './Notifications';
@@ -25,6 +27,7 @@
 	export let audio;
 	export let onEdited; // if not a function then editing is disabled
 	export let transcription;
+	export let songMode = true;
 
 	$: canEdit = isFunction(onEdited);
 
@@ -739,9 +742,9 @@
 				<Notifications bind:addNotification={addNotification}>
 					<Resizable {backgroundColor} container={transcriptionContainerElement} {containerWidth} {autoscroll}>
 						{#if $editMode}
-						<TranscriptionEdit bind:transcription={transcriptionData} {fontSize} {regionColor}/>
+						<TranscriptionEdit bind:transcription={transcriptionData} {fontSize} {regionColor} {songMode}/>
 						{:else}
-						<TranscriptionView transcription={transcriptionData} {fontSize} progressColor={secondaryColor}/>
+						<TranscriptionView transcription={transcriptionData} {fontSize} progressColor={secondaryColor} {songMode}/>
 						{/if}
 					</Resizable>
 				</Notifications>

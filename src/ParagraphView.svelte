@@ -1,5 +1,5 @@
 <script>
-	import ParagraphView from './ParagraphView';
+    import LineView from './LineView';
     import { onMount, beforeUpdate, getContext, tick } from 'svelte';
     import { duration, time, activeIndex, playing, contextKey } from './store';
     import { textMetrics } from './utils';
@@ -8,25 +8,29 @@
     export let transcription;
     export let fontSize;
     export let progressColor = 'aliceblue';
+    export let offset = 0;
+    export let index;
+
+    $: index;
 
     const prepare = transcription => {
-        let paragraphs = [];
+        let res = [];
         transcription.forEach((line, index) => {
             const params = typeof line.params === 'string' ? line.params.split(',') : [];
-            if (paragraphs.length === 0 || params.includes('--paragraph')) {
-                paragraphs = [{
+            if (res.length === 0 || params.includes('--line')) {
+                res = [{
                     offset: index,
-                    paragraph: [line],
-                }, ...paragraphs];
+                    lines: [line],
+                }, ...res];
             } else {
-                const [{offset, paragraph}, ...tail] = paragraphs;
-                paragraphs = [{
+                const [{offset, lines}, ...tail] = res;
+                res = [{
                     offset,
-                    paragraph: [...paragraph, line],
+                    lines: [...lines, line],
                 }, ...tail]
             }
         });
-        return paragraphs.reverse();
+        return res.reverse();
     };
 
 </script>
@@ -40,8 +44,11 @@
     }
 </style>
 
+{#if index !== undefined}
+<div style="padding-left: 0.5rem; margin-bottom: -0.75rem;">{index}:</div>
+{/if}
 <div class="container">
-    {#each prepare(transcription) as {paragraph, offset}, index}
-        <ParagraphView transcription={paragraph} {index} {offset} {fontSize} {progressColor}/>
+    {#each prepare(transcription) as {lines, offset: o}, index}
+    <LineView transcription={lines} offset={offset + o} {fontSize} {progressColor}/>
     {/each}
 </div>

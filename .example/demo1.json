@@ -1,25 +1,35 @@
 [
     {
-        "text": "The snow glows white on the mountain tonight.",
+        "params": "--line,--paragraph",
+        "text": "The snow glows white on",
         "start": 13.79,
+        "end": 15
+    }, {
+        "text": "the mountain tonight.",
+        "start": 15,
         "end": 17
     }, {
+        "params": "--line",
         "text": "Not a footprint to be seen.",
         "start": 17.36,
         "end": 20
     }, {
+        "params": "--line,--paragraph",
         "text": "A kingdom of isolation.",
         "start": 21.01,
         "end": 23.94
     }, {
+        "params": "--line",
         "text": "And it looks like I'm the queen.",
         "start": 24.23,
         "end": 27.15
     }, {
+        "params": "--line",
         "text": "The wind is howling like this swirling storm inside.",
         "start": 28.86,
         "end": 35
     }, {
+        "params": "--line",
         "text": "Couldn't keep it in, Heaven knows I tried.",
         "start": 35.65,
         "end": 41.15

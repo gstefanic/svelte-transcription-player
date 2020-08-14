@@ -70,9 +70,12 @@
         };
 
         /** @type {PartParams[]} */
-        const parts = wordElements.reduce(partsReductor, []).reverse();
-
-        return parts;
+        try {
+            const parts = wordElements.reduce(partsReductor, []).reverse();
+            return parts;
+        } catch (error) {
+            console.error({sectionIndex, text, words}, error.message)
+        }
     };
 
     $: words = text.split(' ');

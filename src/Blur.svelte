@@ -9,10 +9,17 @@
 	const getRadius = radius => isNaN(radius) ? radius : (radius + 'px');
 </script>
 
+{#if transitionIn !== toVoid && transitionOut !== toVoid}
 <div class="bg" style={`--color:${color};` + css} in:transitionIn={inParams} out:transitionOut={outParams} on:click>
 	<slot></slot>
 	<div class="blur" style="--border-radius:{getRadius(radius)}"></div>
 </div>
+{:else}
+<div class="bg" style={`--color:${color};` + css} on:click>
+	<slot></slot>
+	<div class="blur" style="--border-radius:{getRadius(radius)}"></div>
+</div>
+{/if}
 
 <style>
 	.blur {

@@ -114,7 +114,7 @@
 </style>
 
 <div bind:this={container} class="container" style="--progress:{currentLineProgress * 100}%; --progress-color: {$SecondaryColor}; --hover-color: {hoverColor};">
-    {#each prepare(transcription) as {start, end, text, notRegion}, index (start, end, text)}
+    {#each prepare(transcription) as {start, end, text, notRegion}, index}
     {#if index >= offset && index < offset + length}
     <span class="line" 
         class:past={start <= $time && end <= $time} 

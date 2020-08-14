@@ -136,6 +136,20 @@
 				return i !== undefined && i.start !== undefined && i.end !== undefined && i.text !== undefined;
 			}
 		},
+		isLine: (i, t = transcriptionData) => {
+			if (typeof i === 'number') {
+				return _transcription.isLine(t[i]);
+			} else {
+				return i !== undefined && typeof i.text === 'string' && i.line === true;
+			}
+		},
+		isParagraph: (i, t = transcriptionData) => {
+			if (typeof i === 'number') {
+				return _transcription.isLine(t[i]);
+			} else {
+				return i !== undefined && typeof i.text === 'string' && i.paragraph === true;
+			}
+		},
 		getPrevRegion: (i, t = transcriptionData) => {
 			for (i; i > 0; i--) {
 				if (_transcription.isRegion(i - 1, t)) {
@@ -189,11 +203,19 @@
 			}
 		},
 		deleteSection: (index, t = transcriptionData) => {
+			if (index !== t.length - 1) {
+				if (t[index].line === true) {
+					_transcription.updateSection(index + 1, { line: true }, t);
+				}
+				if (t[index].paragraph === true) {
+					_transcription.updateSection(index + 1, { paragraph: true }, t);
+				}
+			}
 			const tmp = t.filter((_, i) => i !== index);
 			if (t === transcriptionData) {
 				transcriptionData = tmp;
 			}
-			return t;
+			return tmp;
 		},
 		removeRegion: (index, t = transcriptionData) => {
 			if (t[index]) {
@@ -391,7 +413,7 @@
 				section.text = _transcription.fixSectionText(section.text);
 				if (!head) {
 					return [section];
-				} else if (_transcription.isRegion(section) || _transcription.isRegion(head)) {
+				} else if (_transcription.isLine(section) || _transcription.isParagraph(section) || _transcription.isRegion(section) || _transcription.isRegion(head)) {
 					return [section, head, ...tail];
 				} else {
 					head.text += ' ' + section.text;
@@ -571,7 +593,9 @@
 			},
 			cancelEditing: () => {
 				applySavedState();
-				setEditMode(false);
+				tick().then(() => {
+					setEditMode(false);
+				});
 			},
 			doneEditing: async () => {
 				doneEditingRunning = true;

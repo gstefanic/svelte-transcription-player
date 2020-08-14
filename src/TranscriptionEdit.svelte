@@ -14,7 +14,9 @@
 	export let length;
 
 	const { 
-		isRegion, 
+		isRegion,
+		isParagraph,
+		isLine,
 		removeRegion, 
 		deleteSection, 
 		startValidator, 
@@ -37,7 +39,6 @@
 	let container, containerWidth;
 
 	onMount(async () => {
-		// container = getContainer();
 		const oldPositioning = container.style.position;
 		container.style.position = 'relative';
 
@@ -88,23 +89,41 @@
 			throw new Error('implementation error');
 		}
 		const t = transcription;
+		let activeIndexDiff = 0;
 		const sectionText = t[sectionIndex].text;
 		const sectionWords = sectionText.split(' ');
 		if (side === 'left') {
 			if (diff < 0) {
-				// trim start
-				const out = sectionWords.slice(0, -diff).join(' ');
-				const inside = sectionWords.slice(-diff).join(' ');
-				t[sectionIndex].text = inside;
-				if (sectionIndex === offset || isRegion(sectionIndex - 1, transcription)) {
-					t.splice(sectionIndex, 0, { text: out, line: t[sectionIndex].line, paragraph: t[sectionIndex].paragraph });
-					if (sectionIndex === offset) {
-						delete t[sectionIndex + 1].line;
-						delete t[sectionIndex + 1].paragraph;
+				const trimStart = (index, diff, t) => {
+					if (diff === 0) {
+						return t;
 					}
-				} else {
-					t[sectionIndex - 1].text += ' ' + out;
-				}
+					
+					const wordCount = t[index].text.split(' ').length;
+					if (diff >= wordCount) {
+						throw new Error('impl');
+					}
+
+					const out = sectionWords.slice(0, diff).join(' ');
+					const inside = sectionWords.slice(diff).join(' ');
+					updateSection(index, { text: inside }, t);
+					if (index === 0 || isLine(index, t) || isParagraph(index, t) || isRegion(index - 1, t)) {
+						activeIndexDiff += 1;
+						t.splice(index, 0, { text: out });
+						updateSection(index, {
+							line: t[index + 1].line, 
+							paragraph: t[index + 1].paragraph,
+						}, t, { breakpoints: true });
+						updateSection(index + 1, {
+							line: false, 
+							paragraph: false,
+						}, t, { breakpoints: true });
+					} else {
+						updateSection(index - 1, { text: t[index - 1].text + ' ' + out }, t);
+					}
+				};
+
+				trimStart(sectionIndex, -diff, t);
 			} else if (diff > 0) {
 				// extend start
 				if (sectionIndex === 0) {
@@ -112,19 +131,39 @@
 				} else if (isRegion(sectionIndex - 1)) {
 					throw new Error('implementation error');
 				} else {
-					const prevSectionText = transcription[sectionIndex - 1].text;
-					const prevSectionWords = prevSectionText.split(' ');
-					const inside = prevSectionWords.slice(-diff).join(' ');
-					const out = prevSectionWords.slice(0, prevSectionWords.length - diff).join(' ');
+					const extendStart = (index, diff, t) => {
+						if (diff === 0) {
+							return t;
+						}
 
-					t[sectionIndex].text = inside + ' ' + t[sectionIndex].text;
-					if (diff === prevSectionWords.length) {
-						t[sectionIndex].line = t[sectionIndex - 1].line;
-						t[sectionIndex].paragraph = t[sectionIndex - 1].paragraph;
-						t.splice(sectionIndex - 1, 1);
-					} else {
-						t[sectionIndex - 1].text = out;
-					}
+						if (index === 0 || isLine(index, t) || isParagraph(index, t) || isRegion(index - 1, t)) {
+							console.log(index === 0, isLine(index, t), isParagraph(index, t), isRegion(index - 1, t));
+							throw new Error('impl');
+						}
+
+						const prevSectionText = transcription[index - 1].text;
+						const prevSectionWords = prevSectionText.split(' ');
+						const prevWordCount = prevSectionWords.length;
+						if (diff >= prevWordCount) {
+							activeIndexDiff -= 1;
+							updateSection(index, {
+								text: prevSectionText + ' ' + t[index].text,
+								line: t[index - 1].line, 
+								paragraph: t[index - 1].paragraph 
+							}, t, { breakpoints: true });
+							t.splice(index - 1, 1);
+							return extendStart(index - 1, diff - prevWordCount, t);
+						} else {
+							const inside = prevSectionWords.slice(-diff).join(' ');
+							const out = prevSectionWords.slice(0, prevSectionWords.length - diff).join(' ');
+
+							updateSection(index, { text: inside + ' ' + t[index].text }, t);
+							updateSection(index - 1, { text: out }, t);
+							return t;
+						}
+					};
+
+					extendStart(sectionIndex, diff, t);
 				}
 			}
 		} else if (side === 'right') {
@@ -134,31 +173,62 @@
 				} else if (isRegion(sectionIndex + 1, transcription)) {
 					throw new Error('implementation error');
 				} else {
-					const nextSectionText = transcription[sectionIndex + 1].text;
-					const nextSectionWords = nextSectionText.split(' ');
-					const inside = nextSectionWords.slice(0, -diff).join(' ');
-					const out = nextSectionWords.slice(-diff).join(' ');
-					t[sectionIndex].text += ' ' + inside;
-					if (-diff === nextSectionWords.length) {
-						t.splice(sectionIndex + 1, 1);
-					} else {
-						t[sectionIndex + 1].text = out;
-					}
+					const extendRight = (index, diff, t) => {
+						if (diff === 0) {
+							return t;
+						}
+
+						if (diff < 0 || isRegion(index + 1, t) || isLine(index + 1, t) || isParagraph(index + 1, t) || index + 1 >= t.length) {
+							// console.log(diff < 0, isRegion(index + 1, t), isLine(index + 1, t), isParagraph(index + 1, t), index + 1 >= t.length)
+							console.log({index, diff, transcription: t});
+							throw new Error('impl');
+						}
+						
+						const nextSectionText = transcription[index + 1].text;
+						const nextSectionWords = nextSectionText.split(' ');
+						const nextWordCount = nextSectionWords.length;
+						if (diff >= nextWordCount) {
+							updateSection(index, { text: t[index].text + ' ' + t[index + 1].text }, t);
+							t.splice(index + 1, 1);
+							return extendRight(index, diff - nextWordCount, t);
+						} else {
+							const inside = nextSectionWords.slice(0, diff).join(' ');
+							const out = nextSectionWords.slice(diff).join(' ');
+							updateSection(index, { text: t[index].text + ' ' + inside }, t)
+							updateSection(index + 1, { text: out }, t);
+							return t;
+						}
+					};
+
+					extendRight(sectionIndex, -diff, t);
 				}
 			} else if (diff > 0) {
-				const inside = sectionWords.slice(0, sectionWords.length - diff).join(' ');
-				const out = sectionWords.slice(-diff).join(' ');
-				t[sectionIndex].text = inside;
-				if (sectionIndex === offset + length - 1 || sectionIndex === transcription.length - 1 || isRegion(sectionIndex + 1, transcription)) {
-					t.splice(sectionIndex + 1, 0, { text: out });
-				} else {
-					t[sectionIndex + 1].text = out + ' ' + t[sectionIndex + 1].text;
-				}
+				const trimRight = (index, diff, t) => {
+					const wordCount = t[index].text.split(' ').length;
+					if (diff >= wordCount) {
+						throw new Error('impl');
+					} else {
+						const inside = sectionWords.slice(0, sectionWords.length - diff).join(' ');
+						const out = sectionWords.slice(-diff).join(' ');
+
+						updateSection(index, { text: inside }, t);
+						if (index === t.length - 1 || isParagraph(index + 1, t) || isLine(index + 1, t) || isRegion(index + 1, t)) {
+							t.splice(index + 1, 0, { text: out });
+						} else {
+							updateSection(index + 1, { text: out + ' ' + t[index + 1].text}, t);
+						}
+					}
+				};
+
+				trimRight(sectionIndex, diff, t);
 			}
 		} else {
 			throw new Error('invalid handle side');
 		}
 		transcription = t;
+		tick().then(() => {
+			$activeIndex = sectionIndex + activeIndexDiff;
+		});
 	};
 
 	const insertText = (index, before = false) => {
@@ -207,15 +277,23 @@
 						section.end = toFixed(end, 2);
 					}
 
-					if (index === transcription.length || (!before && !line && !paragraph)) {
-						const {success} = await insertSection(index, section, transcription, true);
+					if (index === transcription.length || !before) {
+						insertSection(index, section, transcription, true)
 					} else {
-						const { line, paragraph } = transcription[index];
-						await updateSection(index, {line: false, paragraph: false});
-						const {success} = await insertSection(index, Object.assign(section, {line, paragraph}), transcription, true);
+						if (paragraph && line) {
+							await insertSection(index, Object.assign(section, {line: true, paragraph}), transcription, true);
+						} else if (paragraph) {
+							await insertSection(index, Object.assign(section, {line: true, paragraph}), transcription, true);
+						} else if (line) {
+							const { paragraph } = transcription[index];
+							await updateSection(index, {paragraph: false}, transcription, { breakpoints: true });
+							await insertSection(index, Object.assign(section, {line, paragraph}), transcription, true);
+						} else {
+							const { line, paragraph } = transcription[index];
+							await updateSection(index, {line: false, paragraph: false}, transcription, { breakpoints: true });
+							await insertSection(index, Object.assign(section, {line, paragraph}), transcription, true);
+						}
 					}
-
-					console.log(transcription);
 
 				},
 			},
@@ -353,7 +431,17 @@
 					pageX: event.x,
 					pageY: event.y,
 				}, [
-					{ name: 'Edit', callback: () => startEditingSection(sectionIndex), },
+					{ name: 'Edit', callback: () => startEditingSection(sectionIndex), }, 
+					{
+						name: 'Insert text', 
+						submenu: [{
+							name: 'Before', 
+							callback: () => insertText(sectionIndex, true),
+						}, {
+							name: 'After', 
+							callback: () => insertText(sectionIndex + 1, false),
+						},]
+					},
 					{ name: 'Create region', disabled: canCreateRegion ? false : disabledMessage, submenu: [
 						{ name: 'Word', callback: () => {
 							const t = transcription.flat();
@@ -403,7 +491,7 @@
 
 <div bind:offsetHeight={lineHeight} style="position: absolute; left: -1000; top: -1000; color: transparent;">&nbsp;</div>
 <div bind:this={container} style="padding: 0.0rem; box-sizing: border-box;">
-{#each transcription as section, sectionIndex (section)}
+{#each transcription as section, sectionIndex}
 {#if sectionIndex >= offset && sectionIndex < offset + length}
 <Section highlight={isRegion(section)} {lineHeight} index={sectionIndex}
 	text={section.text} {containerWidth} color={section.color || $RegionColor}

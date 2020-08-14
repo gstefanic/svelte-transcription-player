@@ -422,10 +422,8 @@
 
     const seekToRegion = index => {
         if (!ready) return
-        if (index === undefined) {
+        if (index === undefined || index < 0) {
             wavesurfer.seekTo(0);
-        } else if (isRegion(index)) {
-            wavesurfer.seekTo(regions[index].start / $duration);
         } else {
             const { start: seekTime } = getBoundTimes(index);
             wavesurfer.seekTo(seekTime / $duration);

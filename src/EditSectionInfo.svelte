@@ -16,9 +16,10 @@
     export let remove;
     export let validateStart, validateEnd, validateText;
     export let beRegion;
+    export let hasAltText;
     export let paragraphConfigurable = true;
 
-    let isValidText, isValidStart, isValidEnd;
+    let isValidText, isValidAlt, isValidStart, isValidEnd;
 
     const _done = async () => {
         await (done || toVoid)({
@@ -27,6 +28,7 @@
             end: beRegion ? toFixed(section.end) : undefined,
             line: section.paragraph || section.line,
             paragraph: section.paragraph,
+            alt: hasAltText ? section.alt : undefined,
         });
         _close();
     };
@@ -69,6 +71,23 @@
         />
 
         <div style="margin-top: 0.5rem;">
+            <label><input type=checkbox bind:checked={hasAltText}>Alternative text</label>
+        </div>
+
+        {#if hasAltText}
+        <NewInput blurOnEnter={false}
+            singleline={false} 
+            value={section.alt || ''} 
+            maxHeight={50} 
+            css={'display: block; max-height: 50px; border: solid 0.1rem black; border-radius: 0.25rem; padding: 0.2rem; margin: 0 0 0.5rem 0;'}
+            on:input={({detail: value}) => section.alt = value}
+            validate={validateText}
+            bind:valid={isValidAlt}
+            placeholder="Type something..."
+        />
+        {/if}
+
+        <div style="margin-top: 0rem;">
             <label><input type=checkbox bind:checked={section.paragraph} disabled={!paragraphConfigurable}>Start of paragraph</label>
             {#if section.paragraph === true}
             <label><input type=checkbox checked={true} disabled="true">Start of line</label>
@@ -113,7 +132,7 @@
             {/if}
         </div>
         <div>
-            <Button onclick={_done} disabled={!(isValidText && (!beRegion || isValidStart && isValidEnd))} height={'100%'}>Done</Button>
+            <Button onclick={_done} disabled={!(isValidText && (!hasAltText || isValidAlt) && (!beRegion || isValidStart && isValidEnd))} height={'100%'}>Done</Button>
         </div>
     </div>
 </div>

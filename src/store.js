@@ -14,3 +14,5 @@ export const RegionColor = writable('#7F7FFF');
 export const ShowParagraphNumbers = writable(false);
 export const Autoplay = writable(true);
 export const FontSizePx = writable(undefined);
+export const hovering = writable([]);
+export const alternated = writable([]);

@@ -301,7 +301,7 @@
 	};
 
 	const startEditingSection = index => {
-		const {text, start, end, paragraph, line} = transcription[index];
+		const {text, start, end, paragraph, line, alt} = transcription[index];
 
 		const {min: minStart} = startValidator(index);
 		const {max: maxEnd} = endValidator(index);
@@ -320,8 +320,10 @@
 					end: wasRegion ? end : (getNextRegion(index).region || {start: $duration}).start,
 					paragraph: index === 0 || paragraph, 
 					line,
+					alt: alt,
 				},
 				beRegion: wasRegion,
+				hasAltText: typeof alt === 'string',
 				paragraphConfigurable: index !== 0, 
 				validateText: validateText,
 				validateStart: validateStart,
@@ -330,10 +332,17 @@
 				remove: () => deleteSection(index),
 				done: (section) => {
 					const t = transcription.map(section => Object.assign({}, section));
-					const {text, start, end, paragraph: _paragraph, line: _line} = section;
+					const {text, start, end, paragraph: _paragraph, line: _line, alt} = section;
 					if (validateText(text)) {
 						const trimmedText = removeWhitespaces(text);
 						t[index].text = trimmedText;
+					}
+
+					if (alt && validateText(alt)) {
+						const trimmedAlt = removeWhitespaces(text);
+						t[index].alt = alt;
+					} else {
+						delete t[index].alt;
 					}
 
 					if (isRegion(section)) {
@@ -455,7 +464,14 @@
 							}
 
 							if (leftText) {
-								insertSection(sectionIndex, { text: leftText }, t, false);
+								if (isLine(sectionIndex, t) || isParagraph(sectionIndex, t)) {
+									insertSection(sectionIndex, { text: leftText }, t, false).then(() => {
+										updateSection(sectionIndex, { paragraph: t[sectionIndex + 1], line: true }, t);
+										updateSection(sectionIndex + 1, { paragraph: false, line: false }, t);
+									});
+								} else {
+									insertSection(sectionIndex, { text: leftText }, t, false);
+								}
 							}
 
 							transcription = t;

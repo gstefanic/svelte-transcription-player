@@ -14,8 +14,7 @@
     const prepare = transcription => {
         let res = [];
         transcription.slice(offset, offset + length).forEach((line, index) => {
-            const params = typeof line.params === 'string' ? line.params.split(',') : [];
-            if (res.length === 0 || params.includes('--line')) {
+            if (res.length === 0 || line.line === true) {
                 res = [{
                     offset: index,
                     length: 1,
@@ -46,7 +45,7 @@
 <div style="padding-left: 0.5rem; margin-bottom: -0.75rem;">{index}:</div>
 {/if}
 <div class="container">
-    {#each prepare(transcription) as {length, offset: o}, index}
+    {#each prepare(transcription) as {length, offset: o, id}, index}
     {#if $editMode}
     <TranscriptionEdit bind:transcription={transcription} offset={offset + o} {length}/>
     {:else}

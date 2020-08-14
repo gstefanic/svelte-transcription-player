@@ -97,9 +97,10 @@
 				const inside = sectionWords.slice(-diff).join(' ');
 				t[sectionIndex].text = inside;
 				if (sectionIndex === offset || isRegion(sectionIndex - 1, transcription)) {
-					t.splice(sectionIndex, 0, { text: out, params: t[sectionIndex].params });
+					t.splice(sectionIndex, 0, { text: out, line: t[sectionIndex].line, paragraph: t[sectionIndex].paragraph });
 					if (sectionIndex === offset) {
-						delete t[sectionIndex + 1].params;
+						delete t[sectionIndex + 1].line;
+						delete t[sectionIndex + 1].paragraph;
 					}
 				} else {
 					t[sectionIndex - 1].text += ' ' + out;
@@ -118,7 +119,8 @@
 
 					t[sectionIndex].text = inside + ' ' + t[sectionIndex].text;
 					if (diff === prevSectionWords.length) {
-						t[sectionIndex].params = t[sectionIndex - 1].params;
+						t[sectionIndex].line = t[sectionIndex - 1].line;
+						t[sectionIndex].paragraph = t[sectionIndex - 1].paragraph;
 						t.splice(sectionIndex - 1, 1);
 					} else {
 						t[sectionIndex - 1].text = out;
@@ -159,7 +161,7 @@
 		transcription = t;
 	};
 
-	const insertText = (index) => {
+	const insertText = (index, before = false) => {
 
 		if (0 > index || index > transcription.length) {
 			throw new Error('Index out of range', index);
@@ -184,14 +186,18 @@
 					text: '',
 					start: suggestedStart,
 					end: suggestedEnd,
+					line: false,
+					paragraph: index === 0,
 				},
 				beRegion: false,
+				paragraphConfigurable: index !== 0, 
 				validateText: validateText,
 				validateStart: validateStart,
 				validateEnd: validateEnd,
 				close: closeModal,
 				done: async (section) => {
-					const {text, start, end} = section;
+					console.log({section});
+					const {text, start, end, line, paragraph} = section;
 					if (validateText(text)) {
 						section.text = removeWhitespaces(text);
 					}
@@ -201,7 +207,15 @@
 						section.end = toFixed(end, 2);
 					}
 
-					const {success} = await insertSection(index, section, transcription, true);
+					if (index === transcription.length || (!before && !line && !paragraph)) {
+						const {success} = await insertSection(index, section, transcription, true);
+					} else {
+						const { line, paragraph } = transcription[index];
+						await updateSection(index, {line: false, paragraph: false});
+						const {success} = await insertSection(index, Object.assign(section, {line, paragraph}), transcription, true);
+					}
+
+					console.log(transcription);
 
 				},
 			},
@@ -209,7 +223,7 @@
 	};
 
 	const startEditingSection = index => {
-		const {text, start, end} = transcription[index];
+		const {text, start, end, paragraph, line} = transcription[index];
 
 		const {min: minStart} = startValidator(index);
 		const {max: maxEnd} = endValidator(index);
@@ -226,8 +240,11 @@
 					text: text,
 					start: wasRegion ? start : (getPrevRegion(index).region || {end: 0}).end,
 					end: wasRegion ? end : (getNextRegion(index).region || {start: $duration}).start,
+					paragraph: index === 0 || paragraph, 
+					line,
 				},
 				beRegion: wasRegion,
+				paragraphConfigurable: index !== 0, 
 				validateText: validateText,
 				validateStart: validateStart,
 				validateEnd: validateEnd,
@@ -235,7 +252,7 @@
 				remove: () => deleteSection(index),
 				done: (section) => {
 					const t = transcription.map(section => Object.assign({}, section));
-					const {text, start, end} = section;
+					const {text, start, end, paragraph: _paragraph, line: _line} = section;
 					if (validateText(text)) {
 						const trimmedText = removeWhitespaces(text);
 						t[index].text = trimmedText;
@@ -253,6 +270,10 @@
 						}
 					} else {
 						removeRegion(index, t);
+					}
+
+					if (_line !== line || _paragraph !== paragraph) {
+						updateSection(index, {line: _line, paragraph: _paragraph}, t, { breakpoints: true })
 					}
 
 					transcription = t;
@@ -291,10 +312,10 @@
 							name: 'Insert text', 
 							submenu: [{
 								name: 'Before', 
-								callback: () => insertText(sectionIndex),
+								callback: () => insertText(sectionIndex, true),
 							}, {
 								name: 'After', 
-								callback: () => insertText(sectionIndex + 1),
+								callback: () => insertText(sectionIndex + 1, false),
 							},]
 						}, {
 							name: 'Remove region', 
@@ -370,7 +391,7 @@
 					pageX: event.x,
 					pageY: event.y,
 				}, [
-					{ name: 'Insert Text', callback: () => insertText(transcription.length), },
+					{ name: 'Append Text', callback: () => insertText(transcription.length, false), },
 				]);
 			},
 		}
@@ -382,7 +403,7 @@
 
 <div bind:offsetHeight={lineHeight} style="position: absolute; left: -1000; top: -1000; color: transparent;">&nbsp;</div>
 <div bind:this={container} style="padding: 0.0rem; box-sizing: border-box;">
-{#each transcription as section, sectionIndex}
+{#each transcription as section, sectionIndex (section)}
 {#if sectionIndex >= offset && sectionIndex < offset + length}
 <Section highlight={isRegion(section)} {lineHeight} index={sectionIndex}
 	text={section.text} {containerWidth} color={section.color || $RegionColor}

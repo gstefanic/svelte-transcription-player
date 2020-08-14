@@ -15,6 +15,8 @@
     export let done;
     export let remove;
     export let validateStart, validateEnd, validateText;
+    export let beRegion;
+    export let paragraphConfigurable = true;
 
     let isValidText, isValidStart, isValidEnd;
 
@@ -23,6 +25,8 @@
             text: section.text,
             start: beRegion ? toFixed(section.start) : undefined,
             end: beRegion ? toFixed(section.end) : undefined,
+            line: section.paragraph || section.line,
+            paragraph: section.paragraph,
         });
         _close();
     };
@@ -36,9 +40,13 @@
         (close || toVoid)();
     };
 
-    export let beRegion;
-
 </script>
+
+<style>
+    label > input[type="checkbox"] {
+        margin-right: 4px;
+    }
+</style>
 
 <div class="section-editing-container" style="font-size: 1rem;">
 
@@ -61,10 +69,13 @@
         />
 
         <div style="margin-top: 0.5rem;">
-            <label>
-                <input type=checkbox bind:checked={beRegion}>
-                Mark as region
-            </label>
+            <label><input type=checkbox bind:checked={section.paragraph} disabled={!paragraphConfigurable}>Start of paragraph</label>
+            {#if section.paragraph === true}
+            <label><input type=checkbox checked={true} disabled="true">Start of line</label>
+            {:else}
+            <label><input type=checkbox bind:checked={section.line}>Start of line</label>
+            {/if}
+            <label><input type=checkbox bind:checked={beRegion}>Mark as region</label>
         </div>
 
         {#if beRegion}

@@ -316,6 +316,14 @@
         display: inline-block;
     }
 
+    .word:hover {
+        cursor: pointer;
+    }
+
+    .part:hover {
+        cursor: pointer;
+    }
+
     .part {
         z-index: 1;
         position: absolute;

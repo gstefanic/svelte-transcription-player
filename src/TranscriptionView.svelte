@@ -16,45 +16,30 @@
 
     let container;
 
-    const { isRegion, getPrevRegion, getNextRegion } = getContext(contextKey);
+    const { isRegion, getPrevRegion, getNextRegion, getBoundTimes } = getContext(contextKey);
 
     let currentLineProgress, currentLineIndex;
 
     $: calcLineProgress(currentLineIndex, $time);
 
     const extract = (line, index) => {
-        let lineCopy = Object.assign({}, line);
-        if (lineCopy.start === undefined) {
-            lineCopy.start = transcription[index - 1] ? transcription[index - 1].end : 0;
+        if (isRegion(index)) {
+            return Object.assign({}, line);
+        } else {
+            return Object.assign({}, line, getBoundTimes(index));
         }
-
-        if (lineCopy.end === undefined) {
-            lineCopy.end = transcription[index + 1] ? transcription[index + 1].start : $duration;
-        }
-
-        const params = typeof line.params === 'string' ? line.params.split(',') : [];
-        if (params && params.length) {
-            lineCopy['newLine'] = params.includes('--line');
-            lineCopy['newParagraph'] = params.includes('--paragraph');
-        }
-
-
-        return lineCopy;
     };
 
     const prepare = transcription => transcription.map(extract);
 
-    const isCurrent = (start, end, index, check = false) => {
-        if (check || isRegion(index)) {
+    const isCurrent = (start, end, index, skipCheck = false) => {
+        if (skipCheck || isRegion(index)) {
             if (start <= $time && $time < end) {
                 currentLineIndex = index;
                 return true;
             }
         } else {
-            const {region: prevRegion} = getPrevRegion(index);
-            const {region: nextRegion} = getNextRegion(index);
-            const {end: start} = prevRegion || {end: 0};
-            const {start: end} = nextRegion || {start: $duration};
+            const { start, end } = getBoundTimes(index);
             return isCurrent(start, end, index, true);
         }
         return false;
@@ -63,7 +48,7 @@
     const calcLineProgress = index => {
         if (index !== undefined) {
             const {start, end} = extract(transcription[index], index);
-            if (isCurrent(start, end, index)) {
+            if (isCurrent(start, end, index, true)) {
                 const duration = end - start;
                 const elapsed = $time - start;
                 if (elapsed < 0) {
@@ -80,14 +65,17 @@
     };
 
     const lineClick = index => () => {
-        if ($activeIndex === index || index === currentLineIndex) {
+        const { start, end } = getBoundTimes(index);
+        if (start <= $time && $time < end) {
             if ($playing) {
                 $playing = false;
                 $activeIndex = index;
             } else {
                 $activeIndex = undefined;
                 $activeIndex = index;
-                $playing = true;
+                tick().then(() => {
+                    $playing = true;
+                });
             }
         } else {
             $activeIndex = undefined;
@@ -107,6 +95,10 @@
         background: linear-gradient(to right, var(--progress-color) var(--progress), var(--color-upcoming) var(--progress));
     }
 
+    .current.not-region {
+        background-color: var(--progress-color);
+    }
+
     .line {
         border-radius: 0.5rem;
     }
@@ -122,11 +114,12 @@
 </style>
 
 <div bind:this={container} class="container" style="--progress:{currentLineProgress * 100}%; --progress-color: {$SecondaryColor}; --hover-color: {hoverColor};">
-    {#each prepare(transcription) as {start, end, text}, index (start, end)}
+    {#each prepare(transcription) as {start, end, text, notRegion}, index (start, end, text)}
     {#if index >= offset && index < offset + length}
     <span class="line" 
         class:past={start <= $time && end <= $time} 
-        class:current={isCurrent(start, end, index, $time)} 
+        class:current={isCurrent(start, end, index, false, $time)}
+        class:not-region={notRegion}
         on:click={lineClick(index)}
     >
         {text}

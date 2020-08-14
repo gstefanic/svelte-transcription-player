@@ -57,7 +57,7 @@
         }
     };
 
-    const { isRegion, getPrevRegion, getNextRegion, updateSection } = getContext(contextKey);
+    const { isRegion, getPrevRegion, getNextRegion, updateSection, getBoundTimes } = getContext(contextKey);
 
     let wavesurferContainer;
     let waveElement;
@@ -121,11 +121,8 @@
                     wavesurfer.play(regions[$activeIndex].start, regions[$activeIndex].end);
                     wavesurfer.once('pause', () => $playing = false);
                 } else {
-                    const {region: prevRegion} = getPrevRegion($activeIndex);
-                    const {region: nextRegion} = getNextRegion($activeIndex);
-                    const {end: playFrom} = prevRegion || {end: 0};
-                    const {start: playTo} = nextRegion || {start: 0};
-                    wavesurfer.play(playFrom, playTo);
+                    const { start, end } = getBoundTimes($activeIndex);
+                    wavesurfer.play(start, end);
                     wavesurfer.once('pause', () => $playing = false);
                 }
             } else {
@@ -430,8 +427,7 @@
         } else if (isRegion(index)) {
             wavesurfer.seekTo(regions[index].start / $duration);
         } else {
-            const {region: prevRegion} = getPrevRegion(index);
-            const {end: seekTime} = prevRegion || {end: 0};
+            const { start: seekTime } = getBoundTimes(index);
             wavesurfer.seekTo(seekTime / $duration);
         }
     };

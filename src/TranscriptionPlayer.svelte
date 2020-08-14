@@ -271,7 +271,7 @@
 			const {region: nextRegion} = _transcription.getNextRegion(index, t);
 			return nextRegion ? nextRegion.end - $minRegionDuration : $duration;
 		},
-		updateSection: (index, {text, start, end, color}, t = transcriptionData, fix = false) => {
+		updateSection: (index, {text, start, end, color, line, paragraph}, t = transcriptionData, fix = false) => {
 			if (t[index] === undefined) return {
 				success: false,
 				transcription: t,
@@ -314,6 +314,23 @@
 				t[index].color = color;
 			}
 
+			if (line !== undefined) {
+				t[index].line = line === true;
+			}
+
+			if (paragraph !== undefined) {
+				t[index].paragraph = paragraph === true;
+			}
+
+			if (fix && fix.breakpoints) {
+				if (index === 0) {
+					t[index].paragraph = true;
+					t[index].line = true;
+				}
+				if (!t[index].line) delete t[index].line
+				if (!t[index].paragraph) delete t[index].paragraph
+			}
+
 			if (fix && fix.color === true && _transcription.isRegion(index, t)) {
 				if (!_transcription.colors.includes(t[index].color)) {
 					t[index].color = _transcription.getColor(index, t);
@@ -343,7 +360,7 @@
 
 			if (_transcription.isRegion(section)) {
 				t.splice(index, 0, {});
-				if (!_transcription.updateSection(index, section, t, { color: true }).success) {
+				if (!_transcription.updateSection(index, section, t, { color: true, breakpoints: true }).success) {
 					throw new Error('can\'t insert section', section, index, t);
 					t.splice(index, 1);
 					if (t === transcriptionData) {
@@ -406,7 +423,7 @@
 			if (t instanceof Array) {
 				let wasFixed = false;
 				t.forEach((section, index) => {
-					const {success, fixed} = _transcription.updateSection(index, section, t, { times: fix === true, skipAssigment: true });
+					const {success, fixed} = _transcription.updateSection(index, section, t, { times: fix === true, skipAssigment: true, breakpoints: true });
 					if (!success) {
 						return {
 							transcription: t,
@@ -444,6 +461,41 @@
 				return false;
 			}
 		},
+		getBoundTimes: (index, t = transcriptionData) => {
+			if (_transcription.isRegion(index, t)) {
+				return { start: t[index].start, end: t[index].end };
+			} else if (index >= 0 && index < t.length) {
+				const { region: prevRegion, index: prevIndex } = _transcription.getPrevRegion(index, t);
+				const { region: nextRegion, index: nextIndex } = _transcription.getNextRegion(index, t);
+				const minStart = prevRegion ? prevRegion.end : 0;
+				const maxEnd = nextRegion ? nextRegion.start : $duration;
+
+				const startIndex = prevIndex === -1 ? 0 : prevIndex + 1;
+				const endIndex = nextIndex === -1 ? t.length : nextIndex;
+
+				const getChars = (startIndex, endIndex) => {
+					if (endIndex == undefined) {
+						startIndex = endIndex;
+					}
+					if (startIndex < 0 || endIndex > t.length || endIndex < startIndex) {
+						console.error({startIndex, endIndex, transcription: t});
+						throw new Error('impl error');
+					}
+					return t.slice(startIndex, endIndex).map(l => l && typeof l.text === 'string' ? l.text : '').join('').length;
+				}
+
+				const totalDuration = maxEnd - minStart;
+				const charSum = getChars(startIndex, endIndex);
+				const charSumToStart = getChars(startIndex, index);
+				const start = Math.max(minStart, minStart + (charSumToStart / charSum) * totalDuration, 2);
+				const dur = (t[index].text.length / charSum) * totalDuration;
+				const end = Math.min(maxEnd, start + dur);
+				return { start, end };
+			} else {
+				console.error({ index, transcription: t });
+				throw new Error('impl error, index out of bounds');
+			}
+		}
 	};
 
 	setContext(contextKey, _transcription);

@@ -10,8 +10,7 @@
     const prepare = transcription => {
         let paragraphs = [];
         transcription.forEach((line, index) => {
-            const params = typeof line.params === 'string' ? line.params.split(',') : [];
-            if (paragraphs.length === 0 || params.includes('--paragraph')) {
+            if (paragraphs.length === 0 || line.paragraph === true) {
                 paragraphs = [{
                     offset: index,
                     length: 1,

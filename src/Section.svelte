@@ -353,7 +353,6 @@
     .handle-container {
         position: absolute;
         background-color: transparent;
-        /* height: 100%; */
         width: 10px;
         cursor: ew-resize;
         touch-action: none;

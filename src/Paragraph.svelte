@@ -36,7 +36,6 @@
     .container {
         position: relative;
         padding: 0.5rem;
-        height: 100%;
         box-sizing: border-box;
     }
 </style>

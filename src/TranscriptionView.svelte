@@ -92,11 +92,25 @@
             tick().then(() => $alternated[index] = true)
         }
     };
+
+    let hoverTimer;
+
     const hover = index => () => {
-        $hovering = [];
-        $hovering[index] = true;
+        clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(() => {
+            $hovering = [];
+            $hovering[index] = true;
+        }, 1000);
     };
-    const unhover = index => () => $hovering[index] = false;
+
+    let unhoverTimer;
+    const unhover = index => () => {
+        clearTimeout(hoverTimer);
+        clearTimeout(unhoverTimer);
+        unhoverTimer = setTimeout(() => {
+            $hovering[index] = false
+        }, 1000);
+    };
 
 </script>
 

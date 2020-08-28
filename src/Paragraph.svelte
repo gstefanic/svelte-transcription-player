@@ -33,17 +33,18 @@
 </script>
 
 <style>
-    .container {
+    .cntnr {
         position: relative;
         padding: 0.5rem;
         box-sizing: border-box;
+        width: 100%;
     }
 </style>
 
 {#if $ShowParagraphNumbers && index !== undefined}
 <div style="padding-left: 0.5rem; margin-bottom: -0.75rem;">{index}:</div>
 {/if}
-<div class="container">
+<div class="cntnr">
     {#each prepare(transcription) as {length, offset: o, id}, index}
     {#if $editMode}
     <TranscriptionEdit bind:transcription={transcription} offset={offset + o} {length}/>

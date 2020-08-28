@@ -29,14 +29,15 @@
 </script>
 
 <style>
-    .container {
+    .cntnr {
         position: relative;
         padding: 0.5rem;
         box-sizing: border-box;
+        width: 100%;
     }
 </style>
 
-<div class="container">
+<div class="cntnr">
     {#each prepare(transcription) as {length, offset}, index}
     <Paragraph bind:transcription={transcription} {index} {offset} {length}/>
     {/each}

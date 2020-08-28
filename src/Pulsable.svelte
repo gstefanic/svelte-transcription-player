@@ -33,7 +33,7 @@
 	};
 </script>
 
-<span class="container" style={css}>
+<span class="cntnr" style={css}>
 	{content}
 	{#if changed}
 	<span class="content" in:whoosh={{duration: duration, initial: initial}}><slot>{content}</slot></span>
@@ -50,7 +50,7 @@
 		left: 0;
 	}
 	
-	.container {
+	.cntnr {
 		color: transparent;
 		position: relative;
 	}

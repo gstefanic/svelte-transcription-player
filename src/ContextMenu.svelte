@@ -119,7 +119,7 @@
 />
 
 {#if menu !== undefined}
-<div class="container" bind:this={container}
+<div class="cntnr" bind:this={container}
     transition:transitionBg={transitionBgProps}
     style="--menu-left:{menu.left}px; --menu-top:{menu.top}px" 
     bind:offsetWidth={menuW}
@@ -131,11 +131,12 @@
 <slot></slot>
 
 <style>
-    .container {
+    .cntnr {
         position: fixed;
         top: var(--menu-top);
         left: var(--menu-left);
         z-index: 1000;
+        width: fit-content;
 
         min-width: 5rem;
         color: black;

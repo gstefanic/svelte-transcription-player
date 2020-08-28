@@ -133,9 +133,10 @@
         background-color: var(--hover-color);
         cursor: pointer;
     }
-    .container {
+    .cntnr {
         position: relative;
         box-sizing: border-box;
+        /* width: 100%; */
     }
 
     .alternated {
@@ -149,7 +150,7 @@
     }
 </style>
 
-<div bind:this={container} class="container" style="--progress:{currentLineProgress * 100}%; --progress-color: {$SecondaryColor}; --hover-color: {hoverColor};">
+<div bind:this={container} class="cntnr" style="--progress:{currentLineProgress * 100}%; --progress-color: {$SecondaryColor}; --hover-color: {hoverColor};">
     {#each prepare(transcription) as {start, end, text, alt}, index}
     {#if index >= offset && index < offset + length}
     <span class="line" 

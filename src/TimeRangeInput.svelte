@@ -56,7 +56,7 @@
 </script>
 
 <style>
-    .container {
+    .cntnr {
         display: flex;
         /* background: var(--color); */
         background: transparent;
@@ -80,7 +80,7 @@
     }
 </style>
 
-<div class="container" style="--color:{Color(color).lighten(0.5).fade(0).string()}">
+<div class="cntnr" style="--color:{Color(color).lighten(0.5).fade(0).string()}">
     <span class:hidden={endHasFocus} class="value value-start">
         <NewInput value={start}
             css={'min-width: 20px; max-width: 100px;'}

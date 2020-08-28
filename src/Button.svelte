@@ -86,18 +86,20 @@
 			.catch(async () => state = states.ERROR);
 		}
 	};
+
+	let innerWidth;
 	
 </script>
 
-<div class="container" bind:this={container} bind:offsetWidth={_width} bind:offsetHeight={_height} class:loading={state === states.LOADING} class:disabled
-		 style="--button-height: {buttonHeight}; --bg-color: {bgColor}; --font-color: {color}; --radius: {radius}; --pulse-color: {pulseColor}; --font-size: {_fontSize}; --hover-color: {hoverColor}; --disabled-color: {disabledColor}; {css}" on:click={click}>
-	<div class="inner" style="--font-weight: {fontWeight}">
+<div class="cntnr" bind:this={container} bind:offsetWidth={_width} bind:offsetHeight={_height} class:loading={state === states.LOADING} class:disabled
+		 style="--button-height: {buttonHeight}; --bg-color: {bgColor}; --font-color: {color}; --radius: {radius}; --pulse-color: {pulseColor}; --font-size: {_fontSize}; --hover-color: {hoverColor}; --disabled-color: {disabledColor}; --inner-width: {innerWidth}px; {css}" on:click={click}>
+	<div class="inner" style="--font-weight: {fontWeight};" bind:offsetWidth={innerWidth}>
 		<slot></slot>
 	</div>
 </div>
 
 <style>
-	.container {
+	.cntnr {
 		display : inline-flex;
 		align-items : center;
 		justify-content: center;
@@ -108,6 +110,7 @@
 		border-radius: var(--radius);
 		/**/box-sizing: border-box;/**/
 		/**/border: solid 2px transparent;/**/
+		width: var(--inner-width);
 	}
 	
 	.inner {
@@ -118,22 +121,22 @@
 		display: inline;
 	}
 
-	.container:hover {
+	.cntnr:hover {
 		background-color: var(--hover-color);
 	}
 		
-	.container:active {
+	.cntnr:active {
 		border: solid 2px white;
 	}
 	
-	.container.loading {
+	.cntnr.loading {
 		background-color: var(--bg-color);
 		transform: scale(1);
 		animation: pulse 1s infinite;
 		box-sizing: unset;
 	}
 
-	.container.disabled {
+	.cntnr.disabled {
 		border: solid 2px transparent;
 		background-color: var(--disabled-color);
 		cursor: default;

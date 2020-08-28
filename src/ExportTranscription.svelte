@@ -42,7 +42,7 @@
 </script>
 
 <Notifications bind:addNotification={addNotification}>
-    <div class="container">
+    <div class="cntnr">
         <div style="display: flex;">
             <div style="flex: 1; align-self: flex-start;">
                 <span class="title">Export transcription</span>
@@ -61,7 +61,7 @@
 </Notifications>
 
 <style>
-    .container {
+    .cntnr {
         display: flex;
         flex-flow: column nowrap;
         font-size: 1rem;

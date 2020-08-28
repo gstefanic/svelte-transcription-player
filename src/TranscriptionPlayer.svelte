@@ -712,7 +712,7 @@
 </script>
 
 <style>
-	.container {
+	.cntnr {
 		font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 		color: #333;
 		position: relative;
@@ -738,6 +738,7 @@
 		display: flex;
 		align-items: center;
 		margin-top: 0.25rem;
+		width: 100%;
 	}
 
 	.transcription-container {
@@ -751,6 +752,7 @@
 		overflow-y: auto;
         background-color: var(--background-color);
         border-radius: 0.5rem;
+		width: 100%;
 	}
 
 	.transcription-container::-webkit-scrollbar {
@@ -779,7 +781,7 @@
 	}
 </style>
 
-<div bind:this={container} bind:offsetWidth={containerWidth} class="container" style="--player-height: {_playerHeight}px">
+<div bind:this={container} bind:offsetWidth={containerWidth} class="cntnr" style="--player-height: {_playerHeight}px">
 	<ContextMenu contentContainer={container} bind:open={openContextMenu} bind:close={closeContextMenu}>
 		<SimpleModal bind:open={openModal} bind:close={closeModal}>
 			<div class="player-container">

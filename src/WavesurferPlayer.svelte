@@ -432,7 +432,7 @@
 
 </script>
 
-<div class="container" style="--wavesurfer-height: {height}px; --background-color: {$BackgroundColor}; --primary-color: {$PrimaryColor}; --secondary-color: {$SecondaryColor};">
+<div class="cntnr" style="--wavesurfer-height: {height}px; --background-color: {$BackgroundColor}; --primary-color: {$PrimaryColor}; --secondary-color: {$SecondaryColor};">
     <div class="playPauseButtonContainer">
         {#if $playing}
         <div class="playPauseButton paused" class:disabled={!playEnabled} on:click={togglePlaying}>
@@ -527,7 +527,7 @@
         left: var(--cursor-left)
     }
 
-    .container {
+    .cntnr {
         position: relative;
         display: flex;
         align-items: stretch;
@@ -539,6 +539,7 @@
         -moz-user-select: none;
         -ms-user-select: none;
         user-select: none;
+        width: 100%;
 
         background-color: var(--background-color);
         border-radius: 0.5rem;

@@ -131,7 +131,7 @@
 </script>
 
 <style>
-    .container {
+    .cntnr {
         position: absolute;
         background-color: var(--region-color);
         z-index: 30;
@@ -143,11 +143,11 @@
         border-radius: 4px;
     }
 
-    .container.resizing {
+    .cntnr.resizing {
         z-index: 40;
     }
 
-    .container.active {
+    .cntnr.active {
         z-index: 30;
     }
 
@@ -180,7 +180,7 @@
 
 </style>
 
-<div class="container" 
+<div class="cntnr" 
     use:touchable
     on:tap={on.region.tap}
     class:resizing

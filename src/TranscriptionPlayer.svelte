@@ -29,6 +29,10 @@
 	export let onEdited; // if not a function then editing is disabled
 	export let transcription;
 	export let showParagraphNumbers = false;
+	export let externalEdit = false;
+	export const getTranscriptionData = () => transcriptionData
+
+	$editMode = externalEdit;
 
 	$: $PrimaryColor = primaryColor;
 	$: $SecondaryColor = secondaryColor;
@@ -37,7 +41,7 @@
 	$: $ShowParagraphNumbers = showParagraphNumbers === true;
 	$: $Autoplay = autoplay;
 
-	$: canEdit = isFunction(onEdited);
+	$: canEdit = isFunction(onEdited) && !externalEdit;
 
 	let transcriptionData = [];
 	

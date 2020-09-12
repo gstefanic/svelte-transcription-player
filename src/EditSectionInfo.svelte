@@ -1,6 +1,6 @@
 <script>
     import { getContext } from 'svelte';
-    import { contextKey } from './store';
+    import { contextKey, FontSizePx } from './store';
     import { toFixed } from './utils';
     import Button from './Button';
     import NewInput from './NewInput';
@@ -48,9 +48,13 @@
     label > input[type="checkbox"] {
         margin-right: 4px;
     }
+
+    .section-editing-container {
+        font-size: var(--font-size);
+    }
 </style>
 
-<div class="section-editing-container" style="font-size: 1rem;">
+<div class="section-editing-container" style="font-size: --font-size: {$FontSizePx}px;">
 
     <div style="display: flex;">
         <div style="flex: 1; align-self: flex-start;">
@@ -63,7 +67,7 @@
             singleline={false} 
             value={section.text} 
             maxHeight={50} 
-            css={'display: block; max-height: 50px; border: solid 0.1rem black; border-radius: 0.25rem; padding: 0.2rem; margin-top: 0.5rem;'}
+            css={'display: block; max-height: 75px; border: solid 0.1rem black; border-radius: 0.25rem; padding: 0.2rem; margin-top: 0.5rem; font-family: zrcola, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;'}
             on:input={({detail: value}) => section.text = value}
             validate={validateText}
             bind:valid={isValidText}
@@ -79,7 +83,7 @@
             singleline={false} 
             value={section.alt || ''} 
             maxHeight={50} 
-            css={'display: block; max-height: 50px; border: solid 0.1rem black; border-radius: 0.25rem; padding: 0.2rem; margin: 0 0 0.5rem 0;'}
+            css={'display: block; max-height: 75px; border: solid 0.1rem black; border-radius: 0.25rem; padding: 0.2rem; margin: 0 0 0.5rem 0; font-family: zrcola, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;'}
             on:input={({detail: value}) => section.alt = value}
             validate={validateText}
             bind:valid={isValidAlt}
@@ -88,13 +92,21 @@
         {/if}
 
         <div style="margin-top: 0rem;">
-            <label><input type=checkbox bind:checked={section.paragraph} disabled={!paragraphConfigurable}>Start of paragraph</label>
+            <div>
+                <label><input type=checkbox bind:checked={section.paragraph} disabled={!paragraphConfigurable}>Start of paragraph</label>
+            </div>
             {#if section.paragraph === true}
-            <label><input type=checkbox checked={true} disabled="true">Start of line</label>
+            <div>
+                <label><input type=checkbox checked={true} disabled="true">Start of line</label>
+            </div>
             {:else}
-            <label><input type=checkbox bind:checked={section.line}>Start of line</label>
+            <div>
+                <label><input type=checkbox bind:checked={section.line}>Start of line</label>
+            </div>
             {/if}
-            <label><input type=checkbox bind:checked={beRegion}>Mark as region</label>
+            <div>
+                <label><input type=checkbox bind:checked={beRegion}>Mark as region</label>
+            </div>
         </div>
 
         {#if beRegion}

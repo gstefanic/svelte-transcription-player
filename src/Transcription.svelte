@@ -34,6 +34,8 @@
         padding: 0.5rem;
         box-sizing: border-box;
         width: 100%;
+        font-family: zrcola, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+        word-break: keep-all;
     }
 </style>
 
